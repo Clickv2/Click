@@ -1,10 +1,9 @@
-AddressInfo(sourceAddr 10.0.0.1 1A:7C:3E:90:78:41);
-AddressInfo(responderAddr 10.0.0.2 1A:7C:3E:90:78:42);
+AddressInfo(sourceAddr 10.0.0.1 1A:7C:3E:90:78:41)
+AddressInfo(responderAddr 10.0.0.2 1A:7C:3E:90:78:42)
 
-source::GroupReportGenerator(SRC sourceAddr, DST responderAddr);
+source::MyICMPPingSource(SRC sourceAddr, DST responderAddr);
 responder::ICMPPingResponder;
-switch::ListenEtherSwitch;
-
+switch::ListenEtherSwitch
 
 elementclass Router { $src | 
 	
@@ -40,15 +39,15 @@ elementclass Router { $src |
 		-> Discard;
 }
 
-
-
 source
 	-> MarkIPHeader
+	-> IPPrint("sending echo request")
 	-> [0] sourceRouter::Router(sourceAddr) [0]
 	-> [0] switch
-
+	
 switch[0]
 	-> [1] sourceRouter [1]
+	-> IPPrint("received echo reply")
 	-> Discard
 
 responder
@@ -60,6 +59,8 @@ switch[1]
 	-> responder
 
 switch[2]
-	-> ToDump(dumps/test.dump)
+	-> ToDump(switch.dump)
 	-> Discard
+
+
 
