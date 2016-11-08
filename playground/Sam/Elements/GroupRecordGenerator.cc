@@ -153,7 +153,6 @@ Packet* GroupReportGenerator::getCurrentPacket() const{
 	}
 
 	/// From this point on, source lists will be ignored!!
-	printf("test\n");
 	totalPacketSize += sizeof(click_ip);
 	totalPacketSize += sizeof(struct GroupReportStatic);
 	totalPacketSize += sizeof(struct GroupRecordStatic) * f_groupRecordList.size();
@@ -178,7 +177,6 @@ Packet* GroupReportGenerator::getCurrentPacket() const{
     ipHeader->ip_dst = f_dst;
     ipHeader->ip_sum = click_in_cksum((unsigned char *)ipHeader, sizeof(click_ip));
 
-	printf("test1\n");
     /// Get and set the group report header
 	struct GroupReportStatic* reportHeader = (struct GroupReportStatic *)(ipHeader + 1);
 	reportHeader->reportType = 0x22;
@@ -187,7 +185,6 @@ Packet* GroupReportGenerator::getCurrentPacket() const{
 	reportHeader->reserved2 = 0;
 	reportHeader->nrOfRecords = htons(f_groupRecordList.size());
 
-	printf("test2\n");
 	for (int i = 0; i < f_groupRecordList.size(); i++){
 		struct GroupRecordStatic *record = (struct GroupRecordStatic *)(reportHeader + i + 1);
 		record->recordType = f_groupRecordList.at(i).recordType;
@@ -196,7 +193,6 @@ Packet* GroupReportGenerator::getCurrentPacket() const{
 		record->multicastAddress = f_groupRecordList.at(i).multicastAddress;
 	}
 	
-	printf("test3\n");
 	reportHeader->checksum = click_in_cksum((const unsigned char *)reportHeader, totalPacketSize - sizeof(click_ip));
 	
 	q->set_dst_ip_anno(f_dst);
