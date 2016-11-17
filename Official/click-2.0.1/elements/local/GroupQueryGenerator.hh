@@ -67,6 +67,38 @@ public:
 		/// assumes 0 sources!!!
 };
 
+
+
+class GroupQueryParser{
+public:
+	GroupQueryParser();
+	~GroupQueryParser();
+
+	void parsePacket(Packet* packet);
+
+	int getMaxRespCode() const;
+	IPAddress getSRC() const;
+	IPAddress getDST() const;
+	IPAddress getGroupAddress() const;
+	bool getSFlag() const;
+	int getQRV() const;
+	int getQQIC() const;
+	void printPacket() const;
+
+private:
+
+	Vector<struct GroupRecordStatic> f_groupRecordList;
+	Vector<Vector<struct in_addr> > f_sourceListPerRecord;
+
+	IPAddress f_src;
+	IPAddress f_dst;
+	IPAddress f_multicastAddress;
+	int f_maxRespCode;
+	int f_QRV;
+	bool f_SFlag;
+	int f_QQIC;
+};
+
 class GroupQueryGeneratorElement: public Element{
 public:
 	GroupQueryGeneratorElement();

@@ -115,6 +115,27 @@ private:
 	bool f_makingPacket;
 };
 
+class GroupReportParser{
+public:
+	GroupReportParser();
+	~GroupReportParser();
+
+	void parsePacket(Packet* packet);
+
+	Vector<struct GroupRecordStatic> getGroupRecords() const;
+	IPAddress getSRC() const;
+	IPAddress getDST() const;
+	void printPacket() const;
+
+private:
+
+	Vector<struct GroupRecordStatic> f_groupRecordList;
+	Vector<Vector<struct in_addr> > f_sourceListPerRecord;
+
+	IPAddress f_src;
+	IPAddress f_dst;
+};
+
 class GroupReportGeneratorElement: public Element{
 public:
 	GroupReportGeneratorElement();

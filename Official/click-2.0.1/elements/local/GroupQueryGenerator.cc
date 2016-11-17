@@ -9,6 +9,9 @@
 
 #include <time.h>
 #include <stdlib.h>
+#include <iostream>
+
+using namespace std;
 
 CLICK_DECLS
 
@@ -77,6 +80,77 @@ Packet* GroupQueryGenerator::makeNewPacket(uint8_t maxRespCode, bool SFlag,
 
 }
 
+
+
+GroupQueryParser::GroupQueryParser(){}
+GroupQueryParser::~GroupQueryParser(){}
+
+void GroupQueryParser::parsePacket(Packet* packet){
+
+	click_ip *ipHeader = (click_ip *)packet->data();
+    f_src = ipHeader->ip_src;
+    f_dst = ipHeader->ip_dst;
+
+    /// Get and set the group query header
+	struct GroupQueryStatic* queryHeader = (struct GroupQueryStatic *)(ipHeader + 1);
+	f_maxRespCode = queryHeader->maxRespCode;
+	f_multicastAddress = queryHeader->multicastAddress;
+
+	uint8_t Resv_S_QRV = queryHeader->Resv_S_QRV;
+	int QRV;
+	if (Resv_S_QRV >= 8){
+		f_SFlag = true;
+		Resv_S_QRV -= 8;
+	}else{
+		f_SFlag = false;
+	}
+	f_QRV = Resv_S_QRV;
+
+	//printf("QQIV: %d\n\n", QQIC);
+	f_QQIC = queryHeader->QQIC;
+}
+
+
+IPAddress GroupQueryParser::getSRC() const{
+	return f_src;
+}
+
+IPAddress GroupQueryParser::getDST() const{
+	return f_dst;
+}
+
+
+int GroupQueryParser::getMaxRespCode() const{
+	return f_maxRespCode;
+}
+
+IPAddress GroupQueryParser::getGroupAddress() const{
+	return f_multicastAddress;
+}
+
+bool GroupQueryParser::getSFlag() const{
+	return f_SFlag;
+}
+
+int GroupQueryParser::getQRV() const{
+	return f_QRV;
+}
+
+int GroupQueryParser::getQQIC() const{
+	return f_QQIC;
+}
+
+void GroupQueryParser::printPacket() const{
+	cout << ("DST: ") << this->getDST().unparse() << endl;
+	cout << ("Group: ") << this->getGroupAddress().unparse() << endl;
+	cout << ("S: ") << this->getSFlag() << endl;
+	cout << ("QRV: ") << this->getQRV() << endl;
+	cout << ("QQIC: ") << this->getQQIC() << endl;
+}
+
+
+
+
 GroupQueryGeneratorElement::GroupQueryGeneratorElement(){}
 
 GroupQueryGeneratorElement::~GroupQueryGeneratorElement(){}
@@ -109,8 +183,11 @@ Packet* GroupQueryGeneratorElement::make_packet(){
 void GroupQueryGeneratorElement::run_timer(Timer *timer)
 {
     if (Packet *q = make_packet()) {
- 	   output(0).push(q);
- 	   timer->reschedule_after_msec(1000);
+    	GroupQueryParser parser;
+    	parser.parsePacket(q);
+    	parser.printPacket();
+		output(0).push(q);
+		timer->reschedule_after_msec(1000);
     }
 }
 

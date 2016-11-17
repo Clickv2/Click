@@ -8,93 +8,11 @@
 
 #include <time.h>
 #include <stdlib.h>
+#include <iostream>
+
+using namespace std;
 
 CLICK_DECLS
-
-
-/*GroupRecordGenerator::GroupRecordGenerator(){
-	f_recordType = 0;
-	f_auxDataLen = 0;
-	f_nrOfSources = 0;
-	f_addressesGiven = 0;
-	f_multicastAddress = IPAddress().in_addr();
-	f_makingRecord = false;
-}
-
-GroupRecordGenerator::~GroupRecordGenerator(){
-	this->flushPreviousRecord();
-}
-
-bool GroupRecordGenerator::initNewRecord(uint8_t recordType, uint8_t auxDataLen, uint16_t nrOfSources,
-	struct in_addr multicastAddress){
-	/// Flush previous record data
-	this->flushPreviousRecord();
-
-	/// Set record type if valid
-	if (recordType != MODE_IS_INCLUDE || recordType != MODE_IS_EXCLUDE
-		|| recordType != CHANGE_TO_INCLUDE || recordType != CHANGE_TO_EXCLUDE){
-		return false;
-	}
-	this->f_recordType = recordType;
-
-	/// Set the auxiliary data length
-	this->f_auxDataLen = auxDataLen;
-
-	/// Set the number of sources
-	if (!SUPPRESS_OUTPUT && nrOfSources != 0){
-		fprintf(stdout, "nrOfSources is non-zero!\n", "%s");
-	}
-	this->f_nrOfSources = nrOfSources;
-
-	/// Set the multicast address
-	this->f_multicastAddress = multicastAddress;
-
-	/// Init an empty source list
-	this->f_sourceList.clear();
-
-	/// Indicate that a valid record is being made
-	f_makingRecord = true;
-
-	return true;
-}
-
-bool GroupRecordGenerator::addSourceAddress(struct in_addr unicastAddress){
-	f_sourceList.insert(f_sourceList.end(), unicastAddress);
-	f_addressesGiven++;
-	return true;
-}
-
-GroupRecord* GroupRecordGenerator::getCurrentRecord() const{
-	/// Note: this returns a copy of the current made record
-	/// This grouprecord is now responsible for deleting itself properly
-	/// returns a nullpointer if the current record would be invalid
-	if (f_makingRecord && f_addressesGiven == f_sourceList.size()){
-		/// TODO adjust this to a correct record
-		return struct GroupRecordStatic(f_recordType, f_auxDataLen, f_nrOfSources, f_multicastAddress);
-	}else{
-		return 0;
-	}
-}
-
-void GroupRecordGenerator::flushPreviousRecord(){
-	f_recordType = 0;
-	f_auxDataLen = 0;
-	f_nrOfSources = 0;
-	f_addressesGiven = 0;
-	f_multicastAddress = IPAddress().in_addr();
-	f_makingRecord = false;
-}
-
-
-Vector<struct in_addr> GroupRecordGenerator::getCurrentSourceList() const{
-	if (f_makingRecord && f_addressesGiven == f_sourceList.size()){
-		return f_sourceList;
-	}else{
-		return 0;
-	}
-}*/
-
-
 GroupReportGenerator::GroupReportGenerator(){
 	f_makingPacket = false;
 }
@@ -196,8 +114,72 @@ Packet* GroupReportGenerator::getCurrentPacket() const{
 	reportHeader->checksum = click_in_cksum((const unsigned char *)reportHeader, totalPacketSize - sizeof(click_ip));
 	
 	q->set_dst_ip_anno(f_dst);
-	
+
 	return q;
+}
+
+
+
+
+
+GroupReportParser::GroupReportParser(){}
+GroupReportParser::~GroupReportParser(){}
+
+void GroupReportParser::parsePacket(Packet* packet){
+	f_groupRecordList.clear();
+	f_sourceListPerRecord.clear();
+    /// get the IP header
+	click_ip *ipHeader = (click_ip *)packet->data();
+    f_src = ipHeader->ip_src;
+    f_dst = ipHeader->ip_dst;
+
+    /// Get the group report header
+	struct GroupReportStatic* reportHeader = (struct GroupReportStatic *)(ipHeader + 1);
+	uint16_t nrOfRecords = ntohs(reportHeader->nrOfRecords);
+
+	for (int i = 0; i < nrOfRecords; i++){
+		struct GroupRecordStatic *record = (struct GroupRecordStatic *)(reportHeader + i + 1);
+
+		struct GroupRecordStatic newRecord;
+		newRecord.recordType = record->recordType;
+		newRecord.auxDataLen = record->auxDataLen;
+		newRecord.nrOfSources = record->nrOfSources;
+		newRecord.multicastAddress = record->multicastAddress;
+
+		f_groupRecordList.insert(f_groupRecordList.end(), newRecord);
+	}
+}
+
+Vector<struct GroupRecordStatic> GroupReportParser::getGroupRecords() const{
+	return f_groupRecordList;
+}
+
+
+IPAddress GroupReportParser::getSRC() const{
+	return f_src;
+}
+
+IPAddress GroupReportParser::getDST() const{
+	return f_dst;
+}
+
+void GroupReportParser::printPacket() const{
+	for (int i = 0; i < f_groupRecordList.size(); i++){
+		const struct GroupRecordStatic *record = &f_groupRecordList.at(i);
+
+		struct GroupRecordStatic newRecord;
+		
+		int datalen = newRecord.auxDataLen;
+		int nrsources = newRecord.nrOfSources;
+		int type = newRecord.recordType;
+		cout << ("RECORD:\n");
+		cout << ("\tTYPE ");
+		cout << "\t" << type << endl;
+		cout << ("\tAUX ");
+		cout << "\t" << datalen << endl;
+		cout << ("\tsourceAmt ");
+		cout << "\t" << nrsources << endl;
+	}
 }
 
 
@@ -221,6 +203,7 @@ Packet* GroupReportGeneratorElement::make_packet(){
 	GroupReportGenerator gen;
 	gen.makeNewPacket(REPORTMESSAGE, f_src, f_dst);
 	gen.addGroupRecord(filterMode, 0, f_dst, Vector<struct in_addr>());
+	gen.addGroupRecord(filterMode, 0, f_dst, Vector<struct in_addr>());
 	Packet* result = gen.getCurrentPacket();
 	return result;
 }
@@ -228,8 +211,11 @@ Packet* GroupReportGeneratorElement::make_packet(){
 void GroupReportGeneratorElement::run_timer(Timer *timer)
 {
     if (Packet *q = make_packet()) {
- 	   output(0).push(q);
- 	   timer->reschedule_after_msec(1000);
+ 		GroupReportParser parser;
+ 		parser.parsePacket(q);
+ 		parser.printPacket();
+ 		output(0).push(q);
+ 		timer->reschedule_after_msec(1000);
     }
 }
 
