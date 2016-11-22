@@ -18,13 +18,14 @@ elementclass Router {
 	// Shared IP input path and routing table
 	ip :: Strip(14)
 		-> CheckIPHeader
+		-> igmp_filter1::FilterIGMP [1]
 		-> rt :: StaticIPLookup(
 					$server_address:ip/32 0,
 					$client1_address:ip/32 0,
 					$client2_address:ip/32 0,
 					$server_address:ipnet 1,
 					$client1_address:ipnet 2,
-					$client2_address:ipnet 3);
+					$client2_address:ipnet 3, 0.0.0.0/0 4);
 	
 	// ARP responses are copied to each ARPQuerier and the host.
 	arpt :: Tee (3);
@@ -64,6 +65,26 @@ elementclass Router {
 	client1_class[2]
 		-> Paint(2)
 		-> ip;
+
+	igmp_filter1 [0]
+		-> ToDump(dumps/shouldBe.dump, ENCAP IP)
+		-> interface1::ServerInterface(MRP 123, SFLAG false, QRV 5, QQIC 10)
+		-> IPEncap(2, 224.0.0.1, $client1_address)
+		// TODO change sender address!!!
+		-> ToDump(dumps/o1.dump)
+		-> Discard
+
+	interface1 [1]
+		-> ToDump(dumps/o2.dump)
+		-> Discard
+
+	interface1 [2]
+		-> ToDump(dumps/o3.dump)
+		-> Discard
+
+	igmp_filter1[2]
+		-> ToDump(dumps/malformed.dump)
+		-> Discard
 
 	// Input and output paths for interface 2
 	input[2]
@@ -148,6 +169,10 @@ elementclass Router {
 		-> client2_ttl :: DecIPTTL
 		-> client2_frag :: IPFragmenter(1500)
 		-> client2_arpq;
+
+	rt[4]
+		-> ToDump(dumps/RouterSide.dump)
+		-> Discard
 	
 	client2_paint[1]
 		-> ICMPError($client2_address, redirect, host)

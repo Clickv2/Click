@@ -57,7 +57,7 @@ struct GroupQueryStatic{
 };
 
 class GroupQueryGenerator{
-	/// Yes this could be a standalone function, but it's better this way if you plan to expand the protocol
+	// Doesn't set IP header!!! use IPEncap(2, SRC, DST) after this
 public:
 	GroupQueryGenerator();
 	~GroupQueryGenerator();
@@ -70,6 +70,7 @@ public:
 
 
 class GroupQueryParser{
+	// Assumes valid IP header
 public:
 	GroupQueryParser();
 	~GroupQueryParser();

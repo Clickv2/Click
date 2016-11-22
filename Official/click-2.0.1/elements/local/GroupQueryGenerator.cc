@@ -26,10 +26,9 @@ Packet* GroupQueryGenerator::makeNewPacket(uint8_t maxRespCode, bool SFlag,
 		return 0;
 	}
 
-	int headroom = sizeof(click_ether);
+	int headroom = sizeof(click_ether) + sizeof(click_ip);
 	int totalPacketSize = 0;
 
-	totalPacketSize += sizeof(click_ip);
 	totalPacketSize += sizeof(struct GroupQueryStatic);
 
     WritablePacket *q = Packet::make(headroom, 0, totalPacketSize, 0);
@@ -38,22 +37,8 @@ Packet* GroupQueryGenerator::makeNewPacket(uint8_t maxRespCode, bool SFlag,
 		return 0;
     memset(q->data(), '\0', totalPacketSize);
 
-    /// get and then set the IP header
-	click_ip *ipHeader = (click_ip *)q->data();
-    ipHeader->ip_v = 4;
-    ipHeader->ip_hl = sizeof(click_ip) >> 2;
-    ipHeader->ip_len = htons(q->length());
-    /// TODO what's this?
-    uint16_t ip_id = ((maxRespCode) % 0xFFFF) + 1; // ensure ip_id != 0
-    ipHeader->ip_id = htons(ip_id);
-    ipHeader->ip_p = IP_PROTO_IGMP;
-    ipHeader->ip_ttl = 1;
-    ipHeader->ip_src = src;
-    ipHeader->ip_dst = dst;
-    ipHeader->ip_sum = click_in_cksum((unsigned char *)ipHeader, sizeof(click_ip));
-
     /// Get and set the group query header
-	struct GroupQueryStatic* queryHeader = (struct GroupQueryStatic *)(ipHeader + 1);
+	struct GroupQueryStatic* queryHeader = (struct GroupQueryStatic *)(q->data());
 	queryHeader->queryType = 0x11;
 	//printf("MRP: %d\n", maxRespCode);
 	queryHeader->maxRespCode = (maxRespCode);
@@ -72,7 +57,7 @@ Packet* GroupQueryGenerator::makeNewPacket(uint8_t maxRespCode, bool SFlag,
 	queryHeader->QQIC = (QQIC);
 	queryHeader->nrOfSources = 0;
 
-	queryHeader->checksum = click_in_cksum((const unsigned char *)queryHeader, totalPacketSize - sizeof(click_ip));
+	queryHeader->checksum = click_in_cksum((const unsigned char *)queryHeader, totalPacketSize);
 	
 	q->set_dst_ip_anno(dst);
 	

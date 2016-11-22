@@ -19,13 +19,11 @@ GroupReportGenerator::GroupReportGenerator(){
 
 GroupReportGenerator::~GroupReportGenerator(){}
 
-void GroupReportGenerator::makeNewPacket(uint8_t reportType, IPAddress src, IPAddress dst){
+void GroupReportGenerator::makeNewPacket(uint8_t reportType){
 	/// Makes the packet, well not really, but the user thinks i will
 	f_groupRecordList.clear();
 	f_sourceListPerRecord.clear();
 	f_reportType = reportType;
-	f_src = src;
-	f_dst = dst;
 	f_makingPacket = true;
 }
 
@@ -54,7 +52,7 @@ Packet* GroupReportGenerator::getCurrentPacket() const{
 		printf("Warning in report message: no equal amount of source lists and records.\n");
 	}
 
-	int headroom = sizeof(click_ether);
+	int headroom = sizeof(click_ether) + sizeof(click_ip);
 	int totalPacketSize = 0;
 	uint16_t recordAmount = f_groupRecordList.size();
 	bool emptySourceLists = true;
@@ -71,7 +69,6 @@ Packet* GroupReportGenerator::getCurrentPacket() const{
 	}
 
 	/// From this point on, source lists will be ignored!!
-	totalPacketSize += sizeof(click_ip);
 	totalPacketSize += sizeof(struct GroupReportStatic);
 	totalPacketSize += sizeof(struct GroupRecordStatic) * f_groupRecordList.size();
 
@@ -81,22 +78,8 @@ Packet* GroupReportGenerator::getCurrentPacket() const{
 		return 0;
     memset(q->data(), '\0', totalPacketSize);
 
-    /// get and then set the IP header
-	click_ip *ipHeader = (click_ip *)q->data();
-    ipHeader->ip_v = 4;
-    ipHeader->ip_hl = sizeof(click_ip) >> 2;
-    ipHeader->ip_len = htons(q->length());
-    /// TODO what's this?
-    uint16_t ip_id = ((f_groupRecordList.size()) % 0xFFFF) + 1; // ensure ip_id != 0
-    ipHeader->ip_id = htons(ip_id);
-    ipHeader->ip_p = IP_PROTO_IGMP;
-    ipHeader->ip_ttl = 1;
-    ipHeader->ip_src = f_src;
-    ipHeader->ip_dst = f_dst;
-    ipHeader->ip_sum = click_in_cksum((unsigned char *)ipHeader, sizeof(click_ip));
-
     /// Get and set the group report header
-	struct GroupReportStatic* reportHeader = (struct GroupReportStatic *)(ipHeader + 1);
+	struct GroupReportStatic* reportHeader = (struct GroupReportStatic *)q->data();
 	reportHeader->reportType = 0x22;
 	reportHeader->reserved1 = 0;
 	reportHeader->checksum = 0;
@@ -111,9 +94,7 @@ Packet* GroupReportGenerator::getCurrentPacket() const{
 		record->multicastAddress = f_groupRecordList.at(i).multicastAddress;
 	}
 	
-	reportHeader->checksum = click_in_cksum((const unsigned char *)reportHeader, totalPacketSize - sizeof(click_ip));
-	
-	q->set_dst_ip_anno(f_dst);
+	reportHeader->checksum = click_in_cksum((const unsigned char *)reportHeader, totalPacketSize);
 
 	return q;
 }
@@ -188,7 +169,7 @@ GroupReportGeneratorElement::GroupReportGeneratorElement(){}
 GroupReportGeneratorElement::~GroupReportGeneratorElement(){}
 
 int GroupReportGeneratorElement::configure(Vector<String> &conf, ErrorHandler *errh) {
-	if (cp_va_kparse(conf, this, errh, "SRC", cpkM, cpIPAddress, &f_src, "DST", cpkM, cpIPAddress, &f_dst, cpEnd) < 0) return -1;
+	if (cp_va_kparse(conf, this, errh, cpEnd) < 0) return -1;
 	
 	Timer *timer = new Timer(this);
 	timer->initialize(this);
@@ -196,14 +177,17 @@ int GroupReportGeneratorElement::configure(Vector<String> &conf, ErrorHandler *e
 	return 0;
 }
 
+void GroupReportGeneratorElement::push(int port, Packet* p){
+	click_chatter("received packet on genElement");
+}
+
 Packet* GroupReportGeneratorElement::make_packet(){
 	srand(time(0));
 	int filterMode = rand() % 2 + 1;
 
 	GroupReportGenerator gen;
-	gen.makeNewPacket(REPORTMESSAGE, f_src, f_dst);
-	gen.addGroupRecord(filterMode, 0, f_dst, Vector<struct in_addr>());
-	gen.addGroupRecord(filterMode, 0, f_dst, Vector<struct in_addr>());
+	gen.makeNewPacket(REPORTMESSAGE);
+	gen.addGroupRecord(4, 0, IPAddress("224.0.0.55").in_addr(), Vector<struct in_addr>());
 	Packet* result = gen.getCurrentPacket();
 	return result;
 }
@@ -211,11 +195,8 @@ Packet* GroupReportGeneratorElement::make_packet(){
 void GroupReportGeneratorElement::run_timer(Timer *timer)
 {
     if (Packet *q = make_packet()) {
- 		GroupReportParser parser;
- 		parser.parsePacket(q);
- 		parser.printPacket();
  		output(0).push(q);
- 		timer->reschedule_after_msec(1000);
+ 		///timer->reschedule_after_msec(1000);
     }
 }
 

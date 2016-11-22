@@ -93,11 +93,12 @@ struct GroupReportStatic{
 };
 
 class GroupReportGenerator{
+	// Doesn't set IP header!!! use IPEncap(2, SRC, DST) after this
 public:
 	GroupReportGenerator();
 	~GroupReportGenerator();
 
-	void makeNewPacket(uint8_t reportType, IPAddress src, IPAddress dst);
+	void makeNewPacket(uint8_t reportType);
 		/// Makes the packet
 	bool addGroupRecord(uint8_t type, uint8_t auxDataLen, struct in_addr multicastAddress, Vector<struct in_addr> sources);
 		/// Adds a group record to the currently "queued" packet
@@ -110,12 +111,11 @@ private:
 	Vector<Vector<struct in_addr> > f_sourceListPerRecord;
 
 	uint8_t f_reportType;
-	IPAddress f_src;
-	IPAddress f_dst;
 	bool f_makingPacket;
 };
 
 class GroupReportParser{
+	/// Assumes valid IP header
 public:
 	GroupReportParser();
 	~GroupReportParser();
@@ -146,14 +146,14 @@ public:
 	const char *processing() const	{ return PUSH; }
 	int configure(Vector<String>&, ErrorHandler*);
 	
+	void push(int port, Packet* p);
+
 	void run_timer(Timer *);
 
 private:		
 	Packet* make_packet();
 
 	Vector<struct GroupRecordStatic> f_groupRecordList;
-	IPAddress f_src;
-	IPAddress f_dst;
 };
 
 CLICK_ENDDECLS

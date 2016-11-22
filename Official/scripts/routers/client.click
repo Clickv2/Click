@@ -16,9 +16,9 @@ elementclass Client {
 	
 	rt[1]
 		-> DropBroadcasts
+		-> ttl :: DecIPTTL
 		-> ipgw :: IPGWOptions($address)
 		-> FixIPSrc($address)
-		-> ttl :: DecIPTTL
 		-> frag :: IPFragmenter(1500)
 		-> arpq :: ARPQuerier($address)
 		-> output;
@@ -47,4 +47,10 @@ elementclass Client {
 	
 	in_cl[2]
 		-> ip;
+
+	interface::GroupReportGeneratorElement()
+		-> IPEncap(2, $address, 224.0.0.22)
+		-> MarkIPHeader
+		-> CheckIPHeader
+		-> ipgw
 }
