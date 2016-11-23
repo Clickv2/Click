@@ -12,9 +12,12 @@ elementclass Client {
 					$address:ip/32 0,
 					$address:ipnet 0,
 					0.0.0.0/0.0.0.0 $gateway 1)
+		-> Print("SUCCESS YAAAAAAAAAAAASSSSSSS")
+		-> ToDump(dumps/success.dump)
 		-> [1]output;
 	
 	rt[1]
+		-> ToDump(dumps/broadcast.dump, ENCAP IP)
 		-> DropBroadcasts
 		-> ttl :: DecIPTTL
 		-> ipgw :: IPGWOptions($address)
@@ -37,6 +40,7 @@ elementclass Client {
 
 	// Incoming Packets
 	input
+		-> ToDump(dumps/testsuccess.dump)
 		-> HostEtherFilter($address)
 		-> in_cl :: Classifier(12/0806 20/0001, 12/0806 20/0002, 12/0800)
 		-> arp_res :: ARPResponder($address)
@@ -49,7 +53,7 @@ elementclass Client {
 		-> ip;
 
 	interface::GroupReportGeneratorElement()
-		-> IPEncap(2, $address, 224.0.0.22)
+		-> IPEncap(2, $address, 224.0.0.22, TTL 1)
 		-> MarkIPHeader
 		-> CheckIPHeader
 		-> ipgw

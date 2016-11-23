@@ -18,14 +18,14 @@ elementclass Router {
 	// Shared IP input path and routing table
 	ip :: Strip(14)
 		-> CheckIPHeader
-		-> igmp_filter1::FilterIGMP [1]
 		-> rt :: StaticIPLookup(
 					$server_address:ip/32 0,
 					$client1_address:ip/32 0,
 					$client2_address:ip/32 0,
 					$server_address:ipnet 1,
 					$client1_address:ipnet 2,
-					$client2_address:ipnet 3, 0.0.0.0/0 4);
+					$client2_address:ipnet 3,
+					224.0.0.0/4 4);
 	
 	// ARP responses are copied to each ARPQuerier and the host.
 	arpt :: Tee (3);
@@ -65,26 +65,6 @@ elementclass Router {
 	client1_class[2]
 		-> Paint(2)
 		-> ip;
-
-	igmp_filter1 [0]
-		-> ToDump(dumps/shouldBe.dump, ENCAP IP)
-		-> interface1::ServerInterface(MRP 123, SFLAG false, QRV 5, QQIC 10)
-		-> IPEncap(2, 224.0.0.1, $client1_address)
-		// TODO change sender address!!!
-		-> ToDump(dumps/o1.dump)
-		-> Discard
-
-	interface1 [1]
-		-> ToDump(dumps/o2.dump)
-		-> Discard
-
-	interface1 [2]
-		-> ToDump(dumps/o3.dump)
-		-> Discard
-
-	igmp_filter1[2]
-		-> ToDump(dumps/malformed.dump)
-		-> Discard
 
 	// Input and output paths for interface 2
 	input[2]
@@ -168,11 +148,12 @@ elementclass Router {
 		-> FixIPSrc($client2_address)
 		-> client2_ttl :: DecIPTTL
 		-> client2_frag :: IPFragmenter(1500)
+		-> Print("Sending to arp")
+		-> ToDump(dumps/what.dump, ENCAP IP)
 		-> client2_arpq;
 
 	rt[4]
-		-> ToDump(dumps/RouterSide.dump)
-		-> Discard
+		-> paintSwitch::PaintSwitch
 	
 	client2_paint[1]
 		-> ICMPError($client2_address, redirect, host)
@@ -189,5 +170,58 @@ elementclass Router {
 	client2_frag[1]
 		-> ICMPError($client2_address, unreachable, needfrag)
 		-> rt;
+
+	// My stuff
+
+	paintSwitch [1]
+		-> Print("Packet received on interface 0")
+		-> toClients::Tee
+
+	toClients[0]
+		-> Print("Packet received on interface 1")
+		//-> IPEncap(17, $client1_address, 224.0.0.55)
+		-> ToDump(dumps/wutwut.dump, ENCAP IP)
+		-> interface1::ServerInterface(MRP 123, SFLAG false, QRV 5, QQIC 10)
+
+	toClients[1]
+		//-> IPEncap(17, $client2_address, 224.0.0.55)
+		-> interface2::ServerInterface(MRP 123, SFLAG false, QRV 5, QQIC 10)
+
+	paintSwitch [2]
+		-> interface1
+		-> IPEncap(2, $server_address, $client1_address)
+		// TODO change sender address!!!
+		-> ToDump(dumps/toI1IP, ENCAP IP)
+		// TODO Send to dude
+		-> client1_paint
+
+	interface1 [1]
+		//-> ToDump(dumps/o2.dump)
+		-> client1_paint
+
+	interface1 [2]
+		//-> ToDump(dumps/o3.dump)
+		-> Discard
+
+	paintSwitch [3]
+		-> interface2
+		-> IPEncap(2, $server_address, $client1_address)
+		// TODO change sender address!!!
+		-> ToDump(dumps/toI2IP, ENCAP IP)
+		// TODO Send to dude
+		-> client2_paint
+
+	interface2 [1]
+		//-> ToDump(dumps/o2.dump)
+		-> client2_paint
+
+	interface2 [2]
+		//-> ToDump(dumps/o3.dump)
+		-> Discard
+
+	paintSwitch [0]
+		-> Print("Shouldn't get here")
+		-> ToDump(dumps/error.dump)
+		-> Discard
 }
 
