@@ -13,12 +13,10 @@ elementclass Client {
 					$address:ipnet 0,
 					224.0.0.0/4 2,
 					0.0.0.0/0.0.0.0 $gateway 1)
-		-> Print("SUCCESS YAAAAAAAAAAAASSSSSSS")
-		-> ToDump(dumps/success.dump)
 		-> [1]output;
 	
 	rt[1]
-		-> ToDump(dumps/broadcast.dump, ENCAP IP)
+		//-> ToDump(dumps/broadcast.dump, ENCAP IP)
 		-> DropBroadcasts
 		-> ttl :: DecIPTTL
 		-> ipgw :: IPGWOptions($address)
@@ -41,7 +39,7 @@ elementclass Client {
 
 	// Incoming Packets
 	input
-		-> ToDump(dumps/testsuccess.dump)
+		//-> ToDump(dumps/testsuccess.dump)
 		-> HostEtherFilter($address)
 		-> in_cl :: Classifier(12/0806 20/0001, 12/0806 20/0002, 12/0800)
 		-> arp_res :: ARPResponder($address)
@@ -51,12 +49,12 @@ elementclass Client {
 		-> [1]arpq;
 	
 	in_cl[2]
-		-> ToDump(dumps/IPSTUFF.dump)
+		//-> ToDump(dumps/IPSTUFF.dump)
 		-> ip;
 
 	rt[2]
 		// Lorin interface hier en merge me de (tijdelijke) interface hieronder
-		-> ToDump(dumps/toInterface.dump, ENCAP IP)
+		-> ToDump(dumps/receivedByClientInterface.dump, ENCAP IP)
 		-> Discard
 
 	interface::GroupReportGeneratorElement()

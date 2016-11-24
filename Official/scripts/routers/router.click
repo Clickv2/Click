@@ -148,11 +148,11 @@ elementclass Router {
 		-> FixIPSrc($client2_address)
 		-> client2_ttl :: DecIPTTL
 		-> client2_frag :: IPFragmenter(1500)
-		-> Print("Sending to arp")
-		-> ToDump(dumps/what.dump, ENCAP IP)
+		//-> ToDump(dumps/what.dump, ENCAP IP)
 		-> client2_arpq;
 
 	rt[4]
+		-> ToDump(dumps/multicastRecveivedOnRouter.dump, ENCAP IP)
 		-> paintSwitch::PaintSwitch
 	
 	client2_paint[1]
@@ -174,13 +174,11 @@ elementclass Router {
 	// My stuff
 
 	paintSwitch [1]
-		-> Print("Packet received on interface 0")
 		-> toClients::Tee
 
 	toClients[0]
-		-> Print("Packet received on interface 1")
 		//-> IPEncap(17, $client1_address, 224.0.0.55)
-		-> ToDump(dumps/wutwut.dump, ENCAP IP)
+		//-> ToDump(dumps/wutwut.dump, ENCAP IP)
 		-> interface1::ServerInterface(MRP 123, SFLAG false, QRV 5, QQIC 10)
 
 	toClients[1]
@@ -191,7 +189,7 @@ elementclass Router {
 		-> interface1
 		-> IPEncap(2, $server_address, $client1_address)
 		// TODO change sender address!!!
-		-> ToDump(dumps/toI1IP, ENCAP IP)
+		//-> ToDump(dumps/toI1IP, ENCAP IP)
 		// TODO Send to dude
 		-> client1_paint
 
@@ -207,7 +205,7 @@ elementclass Router {
 		-> interface2
 		-> IPEncap(2, $server_address, $client1_address)
 		// TODO change sender address!!!
-		-> ToDump(dumps/toI2IP, ENCAP IP)
+		//-> ToDump(dumps/toI2IP.dump, ENCAP IP)
 		// TODO Send to dude
 		-> client2_paint
 
@@ -220,8 +218,7 @@ elementclass Router {
 		-> Discard
 
 	paintSwitch [0]
-		-> Print("Shouldn't get here")
-		-> ToDump(dumps/error.dump)
+		//-> ToDump(dumps/error.dump)
 		-> Discard
 }
 
