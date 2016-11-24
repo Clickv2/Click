@@ -5,4 +5,4 @@
 // a multicast address and all clients subscribed to this multicast group receive the UDP 
 // packet and print this out.
 
-AddressInfo(multicast_client_address 224.0.0.55) 
+AddressInfo(multicast_client_address 230.0.0.1) 

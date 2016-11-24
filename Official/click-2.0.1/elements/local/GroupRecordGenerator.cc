@@ -187,7 +187,7 @@ Packet* GroupReportGeneratorElement::make_packet(){
 
 	GroupReportGenerator gen;
 	gen.makeNewPacket(REPORTMESSAGE);
-	gen.addGroupRecord(4, 0, IPAddress("224.0.0.55").in_addr(), Vector<struct in_addr>());
+	gen.addGroupRecord(4, 0, IPAddress("230.0.0.1").in_addr(), Vector<struct in_addr>());
 	Packet* result = gen.getCurrentPacket();
 	return result;
 }

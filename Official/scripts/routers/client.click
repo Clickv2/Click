@@ -11,6 +11,7 @@ elementclass Client {
 		-> rt :: StaticIPLookup(
 					$address:ip/32 0,
 					$address:ipnet 0,
+					224.0.0.0/4 2,
 					0.0.0.0/0.0.0.0 $gateway 1)
 		-> Print("SUCCESS YAAAAAAAAAAAASSSSSSS")
 		-> ToDump(dumps/success.dump)
@@ -50,7 +51,13 @@ elementclass Client {
 		-> [1]arpq;
 	
 	in_cl[2]
+		-> ToDump(dumps/IPSTUFF.dump)
 		-> ip;
+
+	rt[2]
+		// Lorin interface hier en merge me de (tijdelijke) interface hieronder
+		-> ToDump(dumps/toInterface.dump, ENCAP IP)
+		-> Discard
 
 	interface::GroupReportGeneratorElement()
 		-> IPEncap(2, $address, 224.0.0.22, TTL 1)
