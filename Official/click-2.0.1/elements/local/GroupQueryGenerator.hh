@@ -62,7 +62,7 @@ public:
 	GroupQueryGenerator();
 	~GroupQueryGenerator();
 
-	Packet* makeNewPacket(uint8_t maxRespCode, bool SFlag, uint8_t QRV, uint8_t QQIC, IPAddress src, IPAddress dst);
+	Packet* makeNewPacket(uint8_t maxRespCode, bool SFlag, uint8_t QRV, uint8_t QQIC, IPAddress multicastAddr);
 		/// Makes the packet if it's invalid, this will return 0
 		/// assumes 0 sources!!!
 };

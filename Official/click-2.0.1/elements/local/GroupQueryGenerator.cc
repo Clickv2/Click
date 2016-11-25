@@ -20,7 +20,7 @@ GroupQueryGenerator::GroupQueryGenerator(){}
 GroupQueryGenerator::~GroupQueryGenerator(){}
 
 Packet* GroupQueryGenerator::makeNewPacket(uint8_t maxRespCode, bool SFlag,
-	uint8_t QRV, uint8_t QQIC, IPAddress src, IPAddress dst){
+	uint8_t QRV, uint8_t QQIC, IPAddress dst){
 
 	if (QRV > 7){
 		return 0;
@@ -161,7 +161,7 @@ Packet* GroupQueryGeneratorElement::make_packet(){
 	}
 
 	GroupQueryGenerator gen;
-	Packet* result = gen.makeNewPacket(128, SFlag, 2, 2, f_src, f_dst);
+	Packet* result = gen.makeNewPacket(128, SFlag, 2, 2, f_dst);
 	return result;
 }
 
