@@ -6,5 +6,5 @@ else
 	make elemlist
 	make
 	cd ..
-	click-2.0.1/userlevel/click ./scripts/"$1"
+	click-2.0.1/userlevel/click -p 10000 ./scripts/"$1"
 fi

@@ -55,11 +55,18 @@ elementclass Client {
 	rt[2]
 		// Lorin interface hier en merge me de (tijdelijke) interface hieronder
 		-> ToDump(dumps/receivedByClientInterface.dump, ENCAP IP)
-		-> Discard
+		-> interface::InterfaceElement(ADDRESS $address)
+		-> ToDump(dumps/forme.dump, ENCAP IP)
+		-> [1]output
 
-	interface::GroupReportGeneratorElement()
+	interface[1]
 		-> IPEncap(2, $address, 224.0.0.22, TTL 1)
+		-> ToDump(dumps/msg.dump, ENCAP IP)
 		-> MarkIPHeader
 		-> CheckIPHeader
 		-> ipgw
+
+	interface[2]
+		-> ToDump(dumps/bad.dump, ENCAP IP)
+		-> Discard
 }

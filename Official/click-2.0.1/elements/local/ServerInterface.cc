@@ -64,7 +64,7 @@ void ServerInterface::push(int port, Packet* p){
 	}
 	//click_chatter("RECEIVED IP?\n");
 	/// Last option, regular IP
-	output(2).push(p);
+	//output(2).push(p);
 }
 
 void ServerInterface::interpretGroupReport(Packet* p){
