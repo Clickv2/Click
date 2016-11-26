@@ -166,11 +166,20 @@ void ServerInterface::updateInterface(Vector<IPAddress>& toListen, Vector<IPAddr
 		}
 	}
 
-	for (int i = 0; i < toQuery.size(); i++){
-		click_chatter("Sending query for %c", toQuery.at(i).unparse().c_str());
+	/*for (int i = 0; i < toQuery.size(); i++){
 		GroupQueryGenerator generator;
 		Packet* p = generator.makeNewPacket(f_maximumMaxRespCode, f_SFlag,f_QRV, f_QQIC, toQuery.at(i));
 		output(0).push(p);
+	}*/
+	for (int i = 0; i < toQuery.size(); i++){
+		for (int j = 0; j < f_toForward.size(); j++){
+			if (toQuery.at(i) == f_toForward.at(j)){
+				click_chatter("removing");
+				click_chatter(f_toForward.at(j).unparse().c_str());
+				f_toForward.erase(f_toForward.begin() + j);
+				break;
+			}
+		}
 	}
 }
 
