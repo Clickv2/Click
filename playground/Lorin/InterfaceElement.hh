@@ -56,12 +56,18 @@ public:
 
 
 class InterfaceElement: public Element{
+//output 0 if mine, 1 if i send message, 2 if not mine
 public:
+	int configure(Vector<String> &, ErrorHandler *);
 	InterfaceElement();
 	~InterfaceElement();
 	void add_handlers();
-	int Leave(const char* &conf, Element *e, void* thunk, ErrorHandler *errh);
-	int Join(const char* &conf, Element *e, void* thunk, ErrorHandler *errh);
+	static int Leave(const String &conf, Element *e, void* thunk, ErrorHandler *errh);
+	static int Join(const String &conf, Element *e, void* thunk, ErrorHandler *errh);
+	const char* class_name() const{return "InterfaceElement";}
+	const char* port_count() const{return "1/2";}
+	const char* processing() const{return PUSH;}
+	void push(int, Packet*); 
 private:
 	Vector<interface_record*> state;
 	bool filterchange;

@@ -23,12 +23,24 @@ CLICK_DECLS
 
 	InterfaceElement::InterfaceElement(){
 		this->filterchange = false;
-	};
+	}
+
+	InterfaceElement::~InterfaceElement(){
+
+	}
+
+	int InterfaceElement::configure(Vector<String> & conf, ErrorHandler *errh){
+		if(cp_va_kparse(conf, this, errh, cpEnd) < 0){
+			return -1;
+		}
+		return 0;
+	}
 
 
-	int InterfaceElement::Leave(const char* &conf, Element *e, void* thunk, ErrorHandler *errh){
+	int InterfaceElement::Leave(const String &conf, Element *e, void* thunk, ErrorHandler *errh){
+		InterfaceElement *me = (InterfaceElement* ) e;
 		struct in_addr multicastAddressin;
-        if(cp_va_kparse(conf, this, errh,
+        if(cp_va_kparse(conf, e, errh,
 					 "MULTICAST-ADDR", cpkM, cpIPAddress, &multicastAddressin,
 					 //"SOURCELIST",  0, Vector<cpIPAddress>, sourcelist,
 					  cpEnd) < 0){
@@ -37,20 +49,21 @@ CLICK_DECLS
 		//struct interface_record record = {multicastAddressin, FilterMode, sourcelist};
 		//interface.append(record)
 		
-		this->filterchange = true;
-		this->change = TO_INCLUDE;
-		for(int i =0;i < this->state.size();i++){
-			if(this->state[i]->multicastAddress == multicastAddressin){
-				this->state[i]->FilterMode = INCLUDE;
-				this->state[i]->sourcelist->clear();
+		me->filterchange = true;
+		me->change = TO_INCLUDE;
+		for(int i =0;i < me->state.size();i++){
+			if(me->state[i]->multicastAddress == multicastAddressin){
+				me->state[i]->FilterMode = INCLUDE;
+				me->state[i]->sourcelist->clear();
 			}
 		}
 	}
 
 
-	int InterfaceElement::Join(const char* &conf, Element *e, void* thunk, ErrorHandler *errh){
+	int InterfaceElement::Join(const String &conf, Element *e, void* thunk, ErrorHandler *errh){
+		InterfaceElement *me = (InterfaceElement* ) e;
 		struct in_addr multicastAddressin;
-        if(cp_va_kparse(conf, this, errh,
+        if(cp_va_kparse(conf, me, errh,
 					 "MULTICAST-ADDR", cpkM, cpIPAddress, &multicastAddressin,
 					 //"SOURCELIST",  0, Vector<cpIPAddress>, sourcelist,
 					  cpEnd) < 0){
@@ -61,26 +74,26 @@ CLICK_DECLS
 		//interface.append(record)
 
 
-		this->filterchange = true;
-		this->change = TO_EXCLUDE;
+		me->filterchange = true;
+		me->change = TO_EXCLUDE;
 		bool present = false;
-		for(int i =0;i < this->state.size();i++){
-			if(this->state[i]->multicastAddress == multicastAddressin){
-				this->state[i]->FilterMode = EXCLUDE;
-				this->state[i]->sourcelist->clear();
+		for(int i =0;i < me->state.size();i++){
+			if(me->state[i]->multicastAddress == multicastAddressin){
+				me->state[i]->FilterMode = EXCLUDE;
+				me->state[i]->sourcelist->clear();
 				present = true;
 			}
 		}
 		if(not present){
 			Vector<struct in_addr> *sourcelist = new Vector<struct in_addr>();
 			interface_record *newInterfacerec = new interface_record(multicastAddressin, EXCLUDE, sourcelist);
-			this->state.push_back(newInterfacerec);
+			me->state.push_back(newInterfacerec);
 		}
 		
     }
 	void InterfaceElement::add_handlers(){
-        add_write_handler("Join", &InterfaceElement::Join, (void*)0);
-		add_write_handler("Leave", &InterfaceElement::Leave, (void*)0);
+        add_write_handler("Join", &InterfaceElement::Join);
+		add_write_handler("Leave", &InterfaceElement::Leave);
     }
 
 
