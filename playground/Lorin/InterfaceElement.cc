@@ -29,15 +29,41 @@ CLICK_DECLS
 
 	}
 
+
+	void InterfaceElement::push(int port, Packet* p){
+		click_ip *ipHeader = (click_ip *)p->data();
+		IPAddress f_dst = ipHeader->ip_dst;
+		if(f_dst == IPAddress("224.0.0.1")){
+			output(0).push(p);
+		}
+		else if(f_dst == this->interfaceaddress){//myIP address
+			output(0).push(p);
+		}
+		else{ 
+			bool pushed = false;
+			for(int i = 0; i < this->state.size();i++){
+				if (f_dst == this->state[i]->multicastAddress && this->state[i]->FilterMode == EXCLUDE){
+					output(0).push(p);
+				}
+			}			
+			if(not pushed){
+				output(2).push(p);
+			}			
+		}
+	}
+
 	int InterfaceElement::configure(Vector<String> & conf, ErrorHandler *errh){
-		if(cp_va_kparse(conf, this, errh, cpEnd) < 0){
+		IPAddress interfaceAddress;
+		if(cp_va_kparse(conf, this, errh, "ADDRESS", cpkM, cpIPAddress, &interfaceAddress, cpEnd) < 0){
 			return -1;
 		}
+		this->interfaceaddress = interfaceAddress;
 		return 0;
 	}
 
 
 	int InterfaceElement::Leave(const String &conf, Element *e, void* thunk, ErrorHandler *errh){
+		GroupReportGenerator reportgenerator;
 		InterfaceElement *me = (InterfaceElement* ) e;
 		struct in_addr multicastAddressin;
         if(cp_va_kparse(conf, e, errh,
@@ -57,10 +83,14 @@ CLICK_DECLS
 				me->state[i]->sourcelist->clear();
 			}
 		}
+		reportgenerator.makeNewPacket(CHANGE_TO_INCLUDE);
+		Packet* reportpacket = reportgenerator.getCurrentPacket();
+		me->output(1).push(reportpacket);
 	}
 
 
 	int InterfaceElement::Join(const String &conf, Element *e, void* thunk, ErrorHandler *errh){
+		GroupReportGenerator reportgenerator;
 		InterfaceElement *me = (InterfaceElement* ) e;
 		struct in_addr multicastAddressin;
         if(cp_va_kparse(conf, me, errh,
@@ -89,6 +119,9 @@ CLICK_DECLS
 			interface_record *newInterfacerec = new interface_record(multicastAddressin, EXCLUDE, sourcelist);
 			me->state.push_back(newInterfacerec);
 		}
+		reportgenerator.makeNewPacket(CHANGE_TO_EXCLUDE);
+		Packet* reportpacket = reportgenerator.getCurrentPacket();
+		me->output(1).push(reportpacket);
 		
     }
 	void InterfaceElement::add_handlers(){

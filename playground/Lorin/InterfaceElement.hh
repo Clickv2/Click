@@ -72,6 +72,7 @@ private:
 	Vector<interface_record*> state;
 	bool filterchange;
 	filter_mode_change change;
+	IPAddress interfaceaddress;
 
 };
 /*
