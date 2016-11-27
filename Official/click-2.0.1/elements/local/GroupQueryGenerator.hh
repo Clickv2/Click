@@ -84,7 +84,7 @@ public:
 	bool getSFlag() const;
 	int getQRV() const;
 	int getQQIC() const;
-	void printPacket() const;
+	//void printPacket() const;
 
 private:
 

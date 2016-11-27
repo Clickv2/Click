@@ -9,9 +9,6 @@
 
 #include <time.h>
 #include <stdlib.h>
-#include <iostream>
-
-using namespace std;
 
 CLICK_DECLS
 
@@ -125,13 +122,13 @@ int GroupQueryParser::getQQIC() const{
 	return f_QQIC;
 }
 
-void GroupQueryParser::printPacket() const{
+/*void GroupQueryParser::printPacket() const{
 	cout << ("DST: ") << this->getDST().unparse() << endl;
 	cout << ("Group: ") << this->getGroupAddress().unparse() << endl;
 	cout << ("S: ") << this->getSFlag() << endl;
 	cout << ("QRV: ") << this->getQRV() << endl;
 	cout << ("QQIC: ") << this->getQQIC() << endl;
-}
+}*/
 
 
 
@@ -168,9 +165,9 @@ Packet* GroupQueryGeneratorElement::make_packet(){
 void GroupQueryGeneratorElement::run_timer(Timer *timer)
 {
     if (Packet *q = make_packet()) {
-    	GroupQueryParser parser;
-    	parser.parsePacket(q);
-    	parser.printPacket();
+    	//GroupQueryParser parser;
+    	//parser.parsePacket(q);
+    	//parser.printPacket();
 		output(0).push(q);
 		timer->reschedule_after_msec(1000);
     }

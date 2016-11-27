@@ -10,9 +10,6 @@
 
 #include <time.h>
 #include <stdlib.h>
-#include <iostream>
-
-using namespace std;
 
 CLICK_DECLS
 

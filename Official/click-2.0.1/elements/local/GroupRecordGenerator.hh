@@ -125,7 +125,7 @@ public:
 	Vector<struct GroupRecordStatic> getGroupRecords() const;
 	IPAddress getSRC() const;
 	IPAddress getDST() const;
-	void printPacket() const;
+	//void printPacket() const;
 
 private:
 

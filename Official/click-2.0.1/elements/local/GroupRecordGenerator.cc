@@ -8,9 +8,6 @@
 
 #include <time.h>
 #include <stdlib.h>
-#include <iostream>
-
-using namespace std;
 
 CLICK_DECLS
 GroupReportGenerator::GroupReportGenerator(){
@@ -144,7 +141,7 @@ IPAddress GroupReportParser::getDST() const{
 	return f_dst;
 }
 
-void GroupReportParser::printPacket() const{
+/*void GroupReportParser::printPacket() const{
 	for (int i = 0; i < f_groupRecordList.size(); i++){
 		const struct GroupRecordStatic *record = &f_groupRecordList.at(i);
 
@@ -161,7 +158,7 @@ void GroupReportParser::printPacket() const{
 		cout << ("\tsourceAmt ");
 		cout << "\t" << nrsources << endl;
 	}
-}
+}*/
 
 
 GroupReportGeneratorElement::GroupReportGeneratorElement(){}
