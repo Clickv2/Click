@@ -12,6 +12,8 @@ It has one input and 2 outputs:
 You'll be able to join or leave a certain multicast address by calling a handler as follows:
 write clientxx/interface.Join x.x.x.x
 Where the current multicast address is set to 230.0.0.1
+For the router it's a tiny bit different (a router can act like a client as well)
+write router/routerInterface.Join x.x.x.x
 
 In the router, you'll see a ServerInterface element. The name is incorrect, but it was far too late to change that. Future updates will adjust this name.
 It has one input and three outputs.
