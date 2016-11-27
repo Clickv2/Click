@@ -35,28 +35,24 @@ CLICK_DECLS
 		/*if(f_dst == IPAddress("224.0.0.1")){
 			output(0).push(p);
 		}*/
-		if(f_dst == this->interfaceaddress){//myIP address
-			output(0).push(p);
-		}else{ 
-			bool pushed = false;
-			for(int i = 0; i < this->state.size();i++){
-				IPAddress comp = IPAddress(this->state[i]->multicastAddress);
-				if (f_dst == this->state[i]->multicastAddress && this->state[i]->FilterMode == EXCLUDE){
-					output(0).push(p);
-				}
-			}			
-			/*if(not pushed){
-				output(2).push(p);
-			}*/		
-		}
+		bool pushed = false;
+		for(int i = 0; i < this->state.size();i++){
+			IPAddress comp = IPAddress(this->state[i]->multicastAddress);
+			if (f_dst == this->state[i]->multicastAddress && this->state[i]->FilterMode == EXCLUDE){
+				output(0).push(p);
+			}
+		}			
+		/*if(not pushed){
+			output(2).push(p);
+		}*/		
+		
 	}
 
 	int InterfaceElement::configure(Vector<String> & conf, ErrorHandler *errh){
 		IPAddress interfaceAddress;
-		if(cp_va_kparse(conf, this, errh, "ADDRESS", cpkM, cpIPAddress, &interfaceAddress, cpEnd) < 0){
+		if(cp_va_kparse(conf, this, errh, cpEnd) < 0){
 			return -1;
 		}
-		this->interfaceaddress = interfaceAddress;
 		return 0;
 	}
 
