@@ -56,7 +56,7 @@ elementclass Client {
 		// Lorin interface hier en merge me de (tijdelijke) interface hieronder
 		-> ToDump(dumps/receivedByClientInterface.dump, ENCAP IP)
 		-> interface::InterfaceElement(ADDRESS $address)
-		-> ToDump(dumps/forme.dump, ENCAP IP)
+		//-> ToDump(dumps/forme.dump, ENCAP IP)
 		-> [1]output
 
 	interface[1]

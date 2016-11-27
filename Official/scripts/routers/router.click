@@ -148,7 +148,6 @@ elementclass Router {
 		-> FixIPSrc($client2_address)
 		-> client2_ttl :: DecIPTTL
 		-> client2_frag :: IPFragmenter(1500)
-		//-> ToDump(dumps/what.dump, ENCAP IP)
 		-> client2_arpq;
 
 	rt[4]
@@ -177,48 +176,41 @@ elementclass Router {
 		-> toClients::Tee
 
 	toClients[0]
-		//-> IPEncap(17, $client1_address, 224.0.0.55)
-		//-> ToDump(dumps/wutwut.dump, ENCAP IP)
 		-> interface1::ServerInterface(MRP 123, SFLAG false, QRV 5, QQIC 10)
 
 	toClients[1]
-		//-> IPEncap(17, $client2_address, 224.0.0.55)
 		-> interface2::ServerInterface(MRP 123, SFLAG false, QRV 5, QQIC 10)
 
 	paintSwitch [2]
 		-> interface1
+		// TODO: Note that interface output 0 is currently not used
+		// In the future, IGMP queries will be sent from here
+		// The stuff below was temporary
 		-> IPEncap(2, $server_address, $client1_address)
-		// TODO change sender address!!!
-		//-> ToDump(dumps/toI1IP, ENCAP IP)
-		// TODO Send to dude
+		-> ToDump(dumps/i1test.dump)
 		-> client1_paint
 
 	interface1 [1]
-		//-> ToDump(dumps/o2.dump)
 		-> client1_paint
 
 	interface1 [2]
-		//-> ToDump(dumps/o3.dump)
 		-> Discard
 
 	paintSwitch [3]
 		-> interface2
+		// TODO: Note that interface output 0 is currently not used
+		// In the future, IGMP queries will be sent from here
+		// The stuff below was temporary
 		-> IPEncap(2, $server_address, $client1_address)
-		// TODO change sender address!!!
-		//-> ToDump(dumps/toI2IP.dump, ENCAP IP)
-		// TODO Send to dude
 		-> client2_paint
 
 	interface2 [1]
-		//-> ToDump(dumps/o2.dump)
 		-> client2_paint
 
 	interface2 [2]
-		//-> ToDump(dumps/o3.dump)
 		-> Discard
 
 	paintSwitch [0]
-		//-> ToDump(dumps/error.dump)
 		-> Discard
 }
 
