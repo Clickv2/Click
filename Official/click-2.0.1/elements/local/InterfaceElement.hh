@@ -57,13 +57,13 @@ public:
 
 
 class InterfaceElement: public Element{
-//output 0 if mine, 1 if i send message, 2 if not mine
+//output 0 if mine, 1 if i send message, if not mine, nothing is pushed anywhere
 public:
 	int configure(Vector<String> &, ErrorHandler *);
 	InterfaceElement();
 	~InterfaceElement();
 	const char* class_name() const{return "InterfaceElement";}
-	const char* port_count() const{return "1/3";}
+	const char* port_count() const{return "1/2";}
 	const char* processing() const{return PUSH;}
 	void add_handlers();
 	static int Leave(const String &conf, Element *e, void* thunk, ErrorHandler *errh);

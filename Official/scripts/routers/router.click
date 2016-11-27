@@ -151,7 +151,7 @@ elementclass Router {
 		-> client2_arpq;
 
 	rt[4]
-		-> ToDump(dumps/multicastRecveivedOnRouter.dump, ENCAP IP)
+		//-> ToDump(dumps/multicastReceivedOnRouter.dump, ENCAP IP)
 		-> paintSwitch::PaintSwitch
 	
 	client2_paint[1]
@@ -181,14 +181,23 @@ elementclass Router {
 	toClients[1]
 		-> interface2::ServerInterface(MRP 123, SFLAG false, QRV 5, QQIC 10)
 
+	toClients[2]
+		-> routerInterface::InterfaceElement()
+		//-> ToDump(dumps/forRouter.dump, ENCAP IP)
+		-> [3]output
+
+	routerInterface[1]
+		// Note that this router doesn't have to send reports
+		-> Discard
+
 	paintSwitch [2]
 		-> interface1
 		// TODO: Note that interface output 0 is currently not used
 		// In the future, IGMP queries will be sent from here
 		// The stuff below was temporary
-		-> IPEncap(2, $server_address, $client1_address)
-		-> ToDump(dumps/i1test.dump)
-		-> client1_paint
+		//-> IPEncap(2, $server_address, $client1_address)
+		//-> client1_paint
+		-> Discard
 
 	interface1 [1]
 		-> client1_paint
@@ -201,8 +210,9 @@ elementclass Router {
 		// TODO: Note that interface output 0 is currently not used
 		// In the future, IGMP queries will be sent from here
 		// The stuff below was temporary
-		-> IPEncap(2, $server_address, $client1_address)
-		-> client2_paint
+		//-> IPEncap(2, $server_address, $client1_address)
+		//-> client2_paint
+		-> Discard
 
 	interface2 [1]
 		-> client2_paint
