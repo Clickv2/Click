@@ -76,16 +76,26 @@ CLICK_DECLS
 		
 		me->filterchange = true;
 		me->change = TO_INCLUDE;
+		bool changed = false;
 		for(int i =0;i < me->state.size();i++){
 			if(me->state[i]->multicastAddress == multicastAddressin){
+				if (me->state[i]->FilterMode != INCLUDE){
+					changed = true;
+				}
+				/*else if (me->state[i]->sourcelist.size() != 0){ //sourcelist functionality
+					changed = true;
+				}*/
 				me->state[i]->FilterMode = INCLUDE;
 				me->state[i]->sourcelist->clear();
+
 			}
 		}
-		reportgenerator.makeNewPacket(REPORTMESSAGE);
-		reportgenerator.addGroupRecord(CHANGE_TO_INCLUDE, 0, multicastAddressin, Vector<struct in_addr>());
-		Packet* reportpacket = reportgenerator.getCurrentPacket();
-		me->output(1).push(reportpacket);
+		if (changed){
+			reportgenerator.makeNewPacket(REPORTMESSAGE);
+			reportgenerator.addGroupRecord(CHANGE_TO_INCLUDE, 0, multicastAddressin, Vector<struct in_addr>());
+			Packet* reportpacket = reportgenerator.getCurrentPacket();
+			me->output(1).push(reportpacket);
+		}
 	}
 
 
@@ -106,8 +116,13 @@ CLICK_DECLS
 		me->filterchange = true;
 		me->change = TO_EXCLUDE;
 		bool present = false;
+		bool changed = false;
 		for(int i =0;i < me->state.size();i++){
 			if(me->state[i]->multicastAddress == multicastAddressin){
+				if(me->state[i]->FilterMode != EXCLUDE /*&& me->state[i]->sourcelist.size() == 0*/ ){ //sourcelist functionality
+					changed = true;
+				}
+				
 				me->state[i]->FilterMode = EXCLUDE;
 				me->state[i]->sourcelist->clear();
 				present = true;
@@ -117,11 +132,14 @@ CLICK_DECLS
 			Vector<struct in_addr> *sourcelist = new Vector<struct in_addr>();
 			interface_record *newInterfacerec = new interface_record(multicastAddressin, EXCLUDE, sourcelist);
 			me->state.push_back(newInterfacerec);
+			changed = true;
 		}
-		reportgenerator.makeNewPacket(REPORTMESSAGE);
-		reportgenerator.addGroupRecord(CHANGE_TO_EXCLUDE, 0, multicastAddressin, Vector<struct in_addr>());
-		Packet* reportpacket = reportgenerator.getCurrentPacket();
-		me->output(1).push(reportpacket);
+		if(changed){
+			reportgenerator.makeNewPacket(REPORTMESSAGE);
+			reportgenerator.addGroupRecord(CHANGE_TO_EXCLUDE, 0, multicastAddressin, Vector<struct in_addr>());
+			Packet* reportpacket = reportgenerator.getCurrentPacket();
+			me->output(1).push(reportpacket);
+		}
     }
 	void InterfaceElement::add_handlers(){
         add_write_handler("Join", &Join, (void*)0);
