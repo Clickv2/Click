@@ -10,6 +10,8 @@
 
 CLICK_DECLS
 
+class RouterRecord;
+
 class ServerInterface: public Element{
 	/// I made a mistake, it should be a RouterInterface, not ServerInterface
 	/// Set IGMP queries on output 0, set IGMP packets on output 1 and other IP stuff on output 2
@@ -41,8 +43,29 @@ private:
 	uint8_t f_QRV;
 	uint8_t f_QQIC;
 
-	Vector<IPAddress> f_toForward;
+	Vector<RouterRecord> f_state;
 };
+
+class RouterRecord{
+public:
+	RouterRecord(IPAddress ip, uint8_t filterMode, unsigned int timeOut, Element* parentInterface);
+		/// Note that everything is assumed to be correct
+	~RouterRecord();
+
+	void runTimer();
+	void refreshInterest();
+
+	IPAddress f_ip;
+	Timer* f_groupTimer;
+	uint8_t f_filterMode;
+	unsigned int f_timeOut;
+	bool f_timerExpired;
+	Element* f_parentInterface;
+
+};
+
+void run_timer(Timer* timer, void* routerRecord);
+
 
 CLICK_ENDDECLS
 

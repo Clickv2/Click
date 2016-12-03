@@ -195,7 +195,9 @@ elementclass Router {
 		// TODO: Note that interface output 0 is currently not used
 		// In the future, IGMP queries will be sent from here
 		// The stuff below was temporary
-		//-> IPEncap(2, $server_address, $client1_address)
+		// TODO on all interfaces: fix src IP?????
+		-> IPEncap(2, $server_address, $client1_address)
+		-> ToDump(dumps/query1.dump, ENCAP IP)
 		//-> client1_paint
 		-> Discard
 
@@ -210,7 +212,8 @@ elementclass Router {
 		// TODO: Note that interface output 0 is currently not used
 		// In the future, IGMP queries will be sent from here
 		// The stuff below was temporary
-		//-> IPEncap(2, $server_address, $client1_address)
+		-> IPEncap(2, $server_address, $client2_address)
+		-> ToDump(dumps/query2.dump, ENCAP IP)
 		//-> client2_paint
 		-> Discard
 

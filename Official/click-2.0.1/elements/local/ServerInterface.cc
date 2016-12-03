@@ -42,12 +42,11 @@ void ServerInterface::push(int port, Packet* p){
 		return;
 	}
 	bool forwardMulticast = false;
-	for (int i = 0; i < f_toForward.size(); i++){
+	for (int i = 0; i < f_state.size(); i++){
 		//click_chatter("Comparing: ");
-		//click_chatter(f_toForward.at(i).unparse().c_str());
 		//click_chatter("With: ");
 		//click_chatter(dst.unparse().c_str());
-		if (dst == f_toForward.at(i)){
+		if (dst == f_state.at(i).f_ip){
 			//click_chatter("send packet!!!!!!!!!!");
 			forwardMulticast = true;
 			break;
@@ -149,7 +148,7 @@ void ServerInterface::sendSpecificQuery(IPAddress multicastAddress){
 void ServerInterface::updateInterface(Vector<IPAddress>& toListen, Vector<IPAddress>& toQuery){
 	for (int j = 0; j < toListen.size(); j++){
 		bool alreadyInList = false;
-		for (int i = 0; i < f_toForward.size(); i++){
+		for (int i = 0; i < f_state.size(); i++){
 			if (toListen.at(j) == toListen.at(i)){
 				alreadyInList = true;
 				break;
@@ -157,9 +156,11 @@ void ServerInterface::updateInterface(Vector<IPAddress>& toListen, Vector<IPAddr
 		}
 
 		if (! alreadyInList){
-			//click_chatter("Now listening to ");
-			//click_chatter(toListen.at(j).unparse().c_str());
-			f_toForward.push_back(toListen.at(j));
+			click_chatter("Now listening to ");
+			click_chatter(toListen.at(j).unparse().c_str());
+			/// TODO remove hardcoded timeout
+			RouterRecord rec = RouterRecord(toListen.at(j), MODE_IS_EXCLUDE, 5000, this);
+			f_state.push_back(rec);
 		}
 	}
 
@@ -169,16 +170,53 @@ void ServerInterface::updateInterface(Vector<IPAddress>& toListen, Vector<IPAddr
 		output(0).push(p);
 	}*/
 	for (int i = 0; i < toQuery.size(); i++){
-		for (int j = 0; j < f_toForward.size(); j++){
-			if (toQuery.at(i) == f_toForward.at(j)){
-				click_chatter("removing");
-				click_chatter(f_toForward.at(j).unparse().c_str());
-				f_toForward.erase(f_toForward.begin() + j);
+		for (int j = 0; j < f_state.size(); j++){
+			if (toQuery.at(i) == f_state.at(j).f_ip){
+				click_chatter("query");
+				click_chatter(f_state.at(j).f_ip.unparse().c_str());
+				//f_toForward.erase(f_toForward.begin() + j);
+				GroupQueryGenerator gen;
+				Packet* p = gen.makeNewPacket(f_maximumMaxRespCode, f_SFlag, f_QRV, f_QQIC, f_state.at(j).f_ip);
+				output(0).push(p);
 				break;
 			}
 		}
 	}
 }
+
+
+RouterRecord::RouterRecord(IPAddress ip, uint8_t filterMode, unsigned int timeOut, Element* parentInterface){
+	f_ip = ip;
+	f_filterMode = filterMode;
+	f_timeOut = timeOut;
+	f_timerExpired = false;
+	f_parentInterface = parentInterface;
+
+	f_groupTimer = new Timer(run_timer, this);
+	f_groupTimer->initialize(parentInterface);
+	f_groupTimer->schedule_after_msec(f_timeOut);
+}
+
+RouterRecord::~RouterRecord(){/*TODO delete timer*/}
+
+void RouterRecord::runTimer(){
+	f_timerExpired = true;
+	click_chatter("timer expired");
+}
+
+void RouterRecord::refreshInterest(){
+	f_groupTimer->unschedule();
+	f_groupTimer->schedule_after_msec(f_timeOut);
+	f_timerExpired = false;
+	f_filterMode = MODE_IS_EXCLUDE;
+}
+
+
+void run_timer(Timer* timer, void* routerRecord){
+	RouterRecord* record = (RouterRecord*) routerRecord;
+	record->runTimer();
+}
+
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(ServerInterface)
