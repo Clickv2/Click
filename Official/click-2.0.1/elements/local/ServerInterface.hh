@@ -42,13 +42,28 @@ private:
 	bool f_SFlag;
 	uint8_t f_QRV;
 	uint8_t f_QQIC;
+	unsigned int f_queryInterval;
+		/// Send general query every x seconds
+	unsigned int f_queryResponseInterval;
+		/// divide by 10 = seconds
+		/// MaxResp time for general queries
+	double f_groupMembershipInterval;
+		/// Timer timeout => group has no members
+	/// TODO other querier present interval and others
+	unsigned int f_lastMemberQueryCount;
+		/// amt of group-specific queries sent before the router assumes there are no members
+	unsigned int f_lastMemberQueryTime;
+		/// see rfc
+	unsigned int f_lastMemberQueryInterval;
+		/// maxresp time used to calc the maxrespcode in group-specific queries
+
 
 	Vector<RouterRecord> f_state;
 };
 
 class RouterRecord{
 public:
-	RouterRecord(IPAddress ip, uint8_t filterMode, unsigned int timeOut, Element* parentInterface);
+	RouterRecord(IPAddress ip, uint8_t filterMode, double timeOut, Element* parentInterface);
 		/// Note that everything is assumed to be correct
 	~RouterRecord();
 

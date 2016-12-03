@@ -122,6 +122,7 @@ elementclass Router {
 		-> FixIPSrc($client1_address)
 		-> client1_ttl :: DecIPTTL
 		-> client1_frag :: IPFragmenter(1500)
+		-> ToDump(dumps/outgoing.dump, ENCAP IP)
 		-> client1_arpq;
 	
 	client1_paint[1]
@@ -196,12 +197,15 @@ elementclass Router {
 		// In the future, IGMP queries will be sent from here
 		// The stuff below was temporary
 		// TODO on all interfaces: fix src IP?????
-		-> IPEncap(2, $server_address, $client1_address)
+		-> IPEncap(2, 0.0.0.0, 230.0.0.1)
+		// TODO don't forget this in other interfaces
+		-> MarkIPHeader
 		-> ToDump(dumps/query1.dump, ENCAP IP)
-		//-> client1_paint
-		-> Discard
+		-> client1_paint
+		//-> Discard
 
 	interface1 [1]
+		-> ToDump(dumps/udp.dump, ENCAP IP)
 		-> client1_paint
 
 	interface1 [2]
@@ -212,9 +216,9 @@ elementclass Router {
 		// TODO: Note that interface output 0 is currently not used
 		// In the future, IGMP queries will be sent from here
 		// The stuff below was temporary
-		-> IPEncap(2, $server_address, $client2_address)
+		-> IPEncap(2, 0.0.0.0, 230.0.0.1)
 		-> ToDump(dumps/query2.dump, ENCAP IP)
-		//-> client2_paint
+		-> client2_paint
 		-> Discard
 
 	interface2 [1]

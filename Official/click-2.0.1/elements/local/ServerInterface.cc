@@ -11,9 +11,13 @@
 #include <time.h>
 #include <stdlib.h>
 
+#include <iostream>
+using namespace std;
+
 CLICK_DECLS
 
-ServerInterface::ServerInterface() {}
+ServerInterface::ServerInterface() {
+}
 
 ServerInterface::~ServerInterface() {}
 
@@ -25,6 +29,14 @@ int ServerInterface::configure(Vector<String> &conf, ErrorHandler *errh) {
 			"QQIC", cpkM, cpInteger, &f_QQIC,
 			 cpEnd) < 0)
 		return -1;
+
+	f_queryInterval = 125;
+	f_queryResponseInterval = 100;
+	f_lastMemberQueryInterval = 10;
+
+	f_groupMembershipInterval = f_QRV * f_queryInterval + f_queryResponseInterval / 10.0;
+	f_lastMemberQueryCount = f_QRV;
+	f_lastMemberQueryTime = f_lastMemberQueryCount * f_lastMemberQueryInterval;
 	return 0;
 }
 void ServerInterface::push(int port, Packet* p){
@@ -159,7 +171,7 @@ void ServerInterface::updateInterface(Vector<IPAddress>& toListen, Vector<IPAddr
 			click_chatter("Now listening to ");
 			click_chatter(toListen.at(j).unparse().c_str());
 			/// TODO remove hardcoded timeout
-			RouterRecord rec = RouterRecord(toListen.at(j), MODE_IS_EXCLUDE, 5000, this);
+			RouterRecord rec = RouterRecord(toListen.at(j), MODE_IS_EXCLUDE, f_groupMembershipInterval, this);
 			f_state.push_back(rec);
 		}
 	}
@@ -185,7 +197,7 @@ void ServerInterface::updateInterface(Vector<IPAddress>& toListen, Vector<IPAddr
 }
 
 
-RouterRecord::RouterRecord(IPAddress ip, uint8_t filterMode, unsigned int timeOut, Element* parentInterface){
+RouterRecord::RouterRecord(IPAddress ip, uint8_t filterMode, double timeOut, Element* parentInterface){
 	f_ip = ip;
 	f_filterMode = filterMode;
 	f_timeOut = timeOut;
@@ -194,7 +206,7 @@ RouterRecord::RouterRecord(IPAddress ip, uint8_t filterMode, unsigned int timeOu
 
 	f_groupTimer = new Timer(run_timer, this);
 	f_groupTimer->initialize(parentInterface);
-	f_groupTimer->schedule_after_msec(f_timeOut);
+	f_groupTimer->schedule_after_msec(f_timeOut * 1000);
 }
 
 RouterRecord::~RouterRecord(){/*TODO delete timer*/}

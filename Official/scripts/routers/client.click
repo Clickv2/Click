@@ -38,6 +38,8 @@ elementclass Client {
 
 	// Incoming Packets
 	input
+		-> Print("rcvd")
+		-> ToDump(dumps/testets.dump)
 		-> HostEtherFilter($address)
 		-> in_cl :: Classifier(12/0806 20/0001, 12/0806 20/0002, 12/0800)
 		-> arp_res :: ARPResponder($address)
