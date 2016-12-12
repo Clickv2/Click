@@ -30,15 +30,37 @@ int ServerInterface::configure(Vector<String> &conf, ErrorHandler *errh) {
 			 cpEnd) < 0)
 		return -1;
 
-	f_queryInterval = 125;
-	f_queryResponseInterval = 100;
+	f_queryInterval = 125000;
+	f_queryResponseInterval = 10000;
 	f_lastMemberQueryInterval = 10;
 
-	f_groupMembershipInterval = f_QRV * f_queryInterval + f_queryResponseInterval / 10.0;
+	// click_chatter("QI: %d", f_queryInterval);
+	// click_chatter("QRI: %d", f_queryResponseInterval);
+	// click_chatter("LMQI: %d", f_lastMemberQueryInterval);
+
+	f_groupMembershipInterval = f_QRV * f_queryInterval + f_queryResponseInterval;
+
+	// click_chatter("GMI: %f", f_groupMembershipInterval);
 	f_lastMemberQueryCount = f_QRV;
 	f_lastMemberQueryTime = f_lastMemberQueryCount * f_lastMemberQueryInterval;
+	// click_chatter("LMQC: %d", f_lastMemberQueryCount);
+	// click_chatter("LMQT: %d", f_lastMemberQueryTime);
 	return 0;
 }
+
+void ServerInterface::deleteRecord(RouterRecord* record){
+	for(int i = 0; i < f_state.size(); i++){
+		if (f_state.at(i) == *record){
+			f_state.erase(f_state.begin() + i);
+			return;
+		}
+	}
+}
+
+void ServerInterface::deleteScheduler(PacketScheduler* scheduler){
+	/// TODO delete by ID
+}
+
 void ServerInterface::push(int port, Packet* p){
 
 	/// make the check for igmp as an element
@@ -149,9 +171,19 @@ void ServerInterface::interpretGroupReport(Packet* p){
 }
 
 void ServerInterface::sendSpecificQuery(IPAddress multicastAddress){
+	/// if S-flag is clear (false) => update group timer
 	GroupQueryGenerator generator;
 	IPAddress dst = IPAddress("224.0.0.1");
 	Packet* p = generator.makeNewPacket(f_maximumMaxRespCode, f_SFlag, f_QRV, f_QQIC, multicastAddress);
+
+	/// TODO Schedule LMQC - 1 retransmission sent every LMQI over LMQT
+	/// TODO pick rnd LMQI
+	f_schedulers.push_back(new PacketScheduler(multicastAddress.unparse().c_str(), f_lastMemberQueryInterval, this, f_lastMemberQueryCount - 1, 0));
+	
+	click_chatter("Sending scheduled query to ");
+	click_chatter(multicastAddress.unparse().c_str());
+	click_chatter("\n");
+	/// TODO this is impossible but it is in the RFC: if the group timer is larger than the LMQT then S-flag is set
 	output(0).push(p);
 	/// TODO can i remove p?
 }
@@ -159,9 +191,17 @@ void ServerInterface::sendSpecificQuery(IPAddress multicastAddress){
 
 void ServerInterface::updateInterface(Vector<IPAddress>& toListen, Vector<IPAddress>& toQuery){
 	for (int j = 0; j < toListen.size(); j++){
+		click_chatter("TOLISTEN\n");
 		bool alreadyInList = false;
 		for (int i = 0; i < f_state.size(); i++){
-			if (toListen.at(j) == toListen.at(i)){
+			if (toListen.at(j) == f_state.at(i).f_ip){
+				/// This is when you start goofing around with handlers to set the variables
+				/// Suppress flag = not set (false) => update timers
+				click_chatter("REFRESH INTEREST\n");
+				if (! f_SFlag){
+					f_state.at(i).f_timeOut = f_groupMembershipInterval;
+					f_state.at(i).refreshInterest();
+				}
 				alreadyInList = true;
 				break;
 			}
@@ -170,8 +210,9 @@ void ServerInterface::updateInterface(Vector<IPAddress>& toListen, Vector<IPAddr
 		if (! alreadyInList){
 			click_chatter("Now listening to ");
 			click_chatter(toListen.at(j).unparse().c_str());
+			click_chatter("timer expires in %f ms\n", f_groupMembershipInterval);
 			/// TODO remove hardcoded timeout
-			RouterRecord rec = RouterRecord(toListen.at(j), MODE_IS_EXCLUDE, f_groupMembershipInterval, this);
+			RouterRecord rec = RouterRecord(toListen.at(j), MODE_IS_EXCLUDE, f_groupMembershipInterval / 10, this);
 			f_state.push_back(rec);
 		}
 	}
@@ -186,10 +227,22 @@ void ServerInterface::updateInterface(Vector<IPAddress>& toListen, Vector<IPAddr
 			if (toQuery.at(i) == f_state.at(j).f_ip){
 				click_chatter("query");
 				click_chatter(f_state.at(j).f_ip.unparse().c_str());
+				click_chatter("\n");
 				//f_toForward.erase(f_toForward.begin() + j);
-				GroupQueryGenerator gen;
-				Packet* p = gen.makeNewPacket(f_maximumMaxRespCode, f_SFlag, f_QRV, f_QQIC, f_state.at(j).f_ip);
-				output(0).push(p);
+
+				/// The router will query this group, set the timer to an interval of LMQT seconds (10 LMQT = 1 second)
+				srand(time(NULL));
+				int newGroupTimer = rand() % f_lastMemberQueryTime;
+				f_state.at(j).f_timeOut = newGroupTimer;
+				f_state.at(j).refreshInterest();
+				click_chatter("Group timer set to %d.\n", newGroupTimer);
+
+				/*GroupQueryGenerator gen;
+				Packet* p = gen.makeNewPacket(f_queryResponseInterval, f_SFlag, f_QRV, f_QQIC, f_state.at(j).f_ip);
+
+				click_chatter("Sending query1 every %d ms\n", f_queryResponseInterval);
+				output(0).push(p);*/
+				this->sendSpecificQuery(f_state.at(j).f_ip);
 				break;
 			}
 		}
@@ -201,34 +254,96 @@ RouterRecord::RouterRecord(IPAddress ip, uint8_t filterMode, double timeOut, Ele
 	f_ip = ip;
 	f_filterMode = filterMode;
 	f_timeOut = timeOut;
-	f_timerExpired = false;
 	f_parentInterface = parentInterface;
 
-	f_groupTimer = new Timer(run_timer, this);
-	f_groupTimer->initialize(parentInterface);
-	f_groupTimer->schedule_after_msec(f_timeOut * 1000);
+	/// Because vectors and pointers aren't friends
+	RouterRecord* newRecord = new RouterRecord(*this);
+
+	f_groupTimer = new Timer(run_timer, newRecord);
+	f_groupTimer->initialize(f_parentInterface);
+	f_groupTimer->schedule_after_msec(f_timeOut);
 }
 
 RouterRecord::~RouterRecord(){/*TODO delete timer*/}
 
-void RouterRecord::runTimer(){
-	f_timerExpired = true;
-	click_chatter("timer expired");
-}
-
 void RouterRecord::refreshInterest(){
 	f_groupTimer->unschedule();
 	f_groupTimer->schedule_after_msec(f_timeOut);
-	f_timerExpired = false;
 	f_filterMode = MODE_IS_EXCLUDE;
+}
+
+bool RouterRecord::operator==(RouterRecord& otherRecord){
+
+	if (this->f_parentInterface == otherRecord.f_parentInterface
+		&& this->f_ip == otherRecord.f_ip && this->f_filterMode == otherRecord.f_filterMode
+		&& this->f_timeOut == otherRecord.f_timeOut){
+
+		return true;
+	}
+	return false;
 }
 
 
 void run_timer(Timer* timer, void* routerRecord){
+	click_chatter("TIMER EXPIRED\n");
 	RouterRecord* record = (RouterRecord*) routerRecord;
-	record->runTimer();
+	ServerInterface* interface = (ServerInterface*) record->f_parentInterface;
+	interface->deleteRecord(record);
+
+	delete record;
 }
 
+
+PacketScheduler::PacketScheduler(String multicastAddr, int sendEvery_X_ms, Element* parentInterface,
+		int amountOfTimes, unsigned int outputPort){
+
+	f_multicastAddr = multicastAddr;
+	f_time = sendEvery_X_ms;
+	f_parentInterface = (ServerInterface*) parentInterface;
+	f_amountOfTimes = amountOfTimes;
+	f_amountOfTimesSent = 0;
+	f_outputPort = outputPort;
+	f_ID = f_nextID;
+	f_nextID++;
+	
+	click_chatter("made scheduler with %d times every %d ms", f_amountOfTimes, f_time);
+
+	f_timer = new Timer(sendToSchedulerPacket, this);
+	f_timer->initialize(f_parentInterface);
+	f_timer->schedule_after_msec(f_time);
+}
+
+PacketScheduler::~PacketScheduler(){
+	/// Can't delete packets... its private
+	///delete f_packet;
+}
+
+void PacketScheduler::sendPacket(){
+	click_chatter("Sending scheduled query to ");
+	click_chatter(f_multicastAddr.c_str());
+	click_chatter("\n");
+
+	GroupQueryGenerator generator;
+	Packet* p = generator.makeNewPacket(f_parentInterface->f_maximumMaxRespCode, f_parentInterface->f_SFlag,
+		f_parentInterface->f_QRV, f_parentInterface->f_QQIC, IPAddress(f_multicastAddr));
+
+	f_parentInterface->output(f_outputPort).push(p);
+
+	f_amountOfTimesSent++;
+}
+
+void sendToSchedulerPacket(Timer* timer, void* scheduler){
+	PacketScheduler* myScheduler = (PacketScheduler*) scheduler;
+
+	if (myScheduler->f_amountOfTimes > myScheduler->f_amountOfTimesSent){
+		myScheduler->sendPacket();
+		myScheduler->f_timer->schedule_after_msec(myScheduler->f_time);
+	}else{
+		myScheduler->f_parentInterface->deleteScheduler(myScheduler);
+	}
+}
+
+unsigned int PacketScheduler::f_nextID = 0;
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(ServerInterface)

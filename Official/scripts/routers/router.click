@@ -219,7 +219,7 @@ elementclass Router {
 		-> IPEncap(2, 0.0.0.0, 230.0.0.1)
 		-> ToDump(dumps/query2.dump, ENCAP IP)
 		-> client2_paint
-		-> Discard
+		//-> Discard
 
 	interface2 [1]
 		-> client2_paint
