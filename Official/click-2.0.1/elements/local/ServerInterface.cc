@@ -45,6 +45,10 @@ int ServerInterface::configure(Vector<String> &conf, ErrorHandler *errh) {
 	f_lastMemberQueryTime = f_lastMemberQueryCount * f_lastMemberQueryInterval;
 	// click_chatter("LMQC: %d", f_lastMemberQueryCount);
 	// click_chatter("LMQT: %d", f_lastMemberQueryTime);
+
+	f_schedulers.push_back(
+		new PacketScheduler("224.0.0.1", f_queryInterval, this, -1, 0));
+
 	return 0;
 }
 
@@ -58,7 +62,7 @@ void ServerInterface::deleteRecord(RouterRecord* record){
 }
 
 void ServerInterface::deleteScheduler(PacketScheduler* scheduler){
-	/// TODO delete by ID
+	/// TODO delete by ID or by address of source
 }
 
 void ServerInterface::push(int port, Packet* p){
@@ -212,7 +216,7 @@ void ServerInterface::updateInterface(Vector<IPAddress>& toListen, Vector<IPAddr
 			click_chatter(toListen.at(j).unparse().c_str());
 			click_chatter("timer expires in %f ms\n", f_groupMembershipInterval);
 			/// TODO remove hardcoded timeout
-			RouterRecord rec = RouterRecord(toListen.at(j), MODE_IS_EXCLUDE, f_groupMembershipInterval / 10, this);
+			RouterRecord rec = RouterRecord(toListen.at(j), MODE_IS_EXCLUDE, f_groupMembershipInterval, this);
 			f_state.push_back(rec);
 		}
 	}
@@ -335,7 +339,7 @@ void PacketScheduler::sendPacket(){
 void sendToSchedulerPacket(Timer* timer, void* scheduler){
 	PacketScheduler* myScheduler = (PacketScheduler*) scheduler;
 
-	if (myScheduler->f_amountOfTimes > myScheduler->f_amountOfTimesSent){
+	if (myScheduler->f_amountOfTimes > myScheduler->f_amountOfTimesSent || myScheduler->f_amountOfTimes == -1){
 		myScheduler->sendPacket();
 		myScheduler->f_timer->schedule_after_msec(myScheduler->f_time);
 	}else{
