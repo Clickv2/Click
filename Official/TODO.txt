@@ -1,0 +1,2 @@
+Sam: Fix ip header in queries and stuff
+Sam: implement S-flag
