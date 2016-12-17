@@ -136,7 +136,13 @@ void ServerInterface::querierElection(Packet* p){
 	int protocol = ipHeader->ip_p;
 	IPAddress src = ipHeader->ip_src;
 	if (ntohl(ntohl(f_myIP) > ntohl(src))){
-		/// TODO suppress own queries
+		for (int i = 0; i < f_schedulers.size(); i++){
+			if (f_schedulers.at(i)->f_multicastAddr == ""){
+				/// Empty string means general query!!!
+				f_schedulers.at(i)->suppress(f_otherQuerierPresentInterval, f_startupQueryInterval, f_startupQueryCount);
+				return;
+			}
+		}
 	}
 }
 
