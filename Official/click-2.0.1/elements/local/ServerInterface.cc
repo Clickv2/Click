@@ -418,10 +418,9 @@ void startup(Timer* timer, void* scheduler){
 	click_chatter("Sent %d out of %d pkg", myScheduler->f_startupSent, myScheduler->f_startupCount);
 	if (myScheduler->f_startupSent < myScheduler->f_startupCount){
 		click_chatter("sending startup pkg");
-		/// Note that this only works for infinite stream of packets!
-		/// in sendPacket, the amountOfTimesSent counter is incremented!!!
 		myScheduler->sendPacket();
 		myScheduler->f_suppressTimer->schedule_after_msec(myScheduler->f_startupInterval);
+		myScheduler->f_amountOfTimesSent--;
 		myScheduler->f_startupSent++;
 	}else{
 		click_chatter("restarting normal business");
