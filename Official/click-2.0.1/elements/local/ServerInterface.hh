@@ -37,6 +37,8 @@ public:
 
 public:
 
+	void querierElection(Packet* p);
+
 	void interpretGroupReport(Packet* p);
 	void sendSpecificQuery(IPAddress multicastAddress);
 	void updateInterface(Vector<IPAddress>& toListen, Vector<IPAddress>& toQuery);
@@ -46,6 +48,7 @@ public:
 	bool f_SFlag;
 	uint8_t f_QRV;
 	uint8_t f_QQIC;
+	IPAddress f_myIP;
 	unsigned int f_queryInterval;
 		/// Send general query every x seconds
 	unsigned int f_queryResponseInterval;
@@ -53,7 +56,17 @@ public:
 		/// MaxResp time for general queries
 	double f_groupMembershipInterval;
 		/// Timer timeout => group has no members
-	/// TODO other querier present interval and others
+
+	/// TODO set these
+	double f_otherQuerierPresentInterval;
+		/// Must be QRV * QI + QRI / 2
+	double f_startupQueryInterval;
+		/// 1/4 QI
+	double f_startupQueryCount;
+		/// # queries sent on startup seperated by the above interval
+		/// default = QRV
+
+
 	unsigned int f_lastMemberQueryCount;
 		/// amt of group-specific queries sent before the router assumes there are no members
 	unsigned int f_lastMemberQueryTime;
@@ -95,6 +108,8 @@ public:
 
 	void sendPacket();
 
+	void suppress(double time, double startupInterval, unsigned int startupCount);
+
 	static unsigned int f_nextID;
 
 	String f_multicastAddr;
@@ -106,9 +121,17 @@ public:
 	unsigned int f_outputPort;
 	unsigned int f_ID;
 
+	bool f_suppress;
+	Timer* f_suppressTimer;
+	double f_startupInterval;
+	int f_startupCount;
+	int f_startupSent;
+
 };
 
 void sendToSchedulerPacket(Timer* timer, void* scheduler);
+
+void startup(Timer* timer, void* scheduler);
 
 CLICK_ENDDECLS
 

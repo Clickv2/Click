@@ -10,6 +10,7 @@
 
 #include <time.h>
 #include <stdlib.h>
+#include <iostream>
 
 #include <iostream>
 using namespace std;
@@ -27,6 +28,7 @@ int ServerInterface::configure(Vector<String> &conf, ErrorHandler *errh) {
 			"SFLAG", cpkM, cpBool, &f_SFlag,
 			"QRV", cpkM, cpInteger, &f_QRV,
 			"QQIC", cpkM, cpInteger, &f_QQIC,
+			"IP", cpkM, cpIPAddress, &f_myIP,
 			 cpEnd) < 0)
 		return -1;
 
@@ -46,8 +48,15 @@ int ServerInterface::configure(Vector<String> &conf, ErrorHandler *errh) {
 	// click_chatter("LMQC: %d", f_lastMemberQueryCount);
 	// click_chatter("LMQT: %d", f_lastMemberQueryTime);
 
+	// cout << (f_myIP.unparse().c_str()) << endl;
+	// cout << ntohl(uint32_t(f_myIP)) << endl;
+
+	f_otherQuerierPresentInterval = f_QRV * f_queryInterval + f_queryResponseInterval / 2.0;
+	f_startupQueryInterval = f_queryInterval / 4.0;
+	f_startupQueryCount = f_QRV;
+
 	f_schedulers.push_back(
-		new PacketScheduler("224.0.0.1", f_queryInterval, this, -1, 0));
+		new PacketScheduler("", f_queryInterval / 100, this, -1, 0));
 
 	return 0;
 }
@@ -63,6 +72,19 @@ void ServerInterface::deleteRecord(RouterRecord* record){
 
 void ServerInterface::deleteScheduler(PacketScheduler* scheduler){
 	/// TODO delete by ID or by address of source
+	bool removed = true;
+
+	while(removed && f_schedulers.size() > 0){
+		removed = false;
+		for (int i = 0; i < f_schedulers.size(); i++){
+			if (f_schedulers.at(i)->f_multicastAddr == scheduler->f_multicastAddr){
+				/// TODO free mem of scheduler
+				f_schedulers.erase(f_schedulers.begin() + i);
+				removed = true;
+				break;
+			}
+		}
+	}
 }
 
 void ServerInterface::push(int port, Packet* p){
@@ -73,12 +95,20 @@ void ServerInterface::push(int port, Packet* p){
 	int protocol = ipHeader->ip_p;
 	IPAddress dst = ipHeader->ip_dst;
 	IPAddress routerListen = IPAddress("224.0.0.22");
+	IPAddress generalQuery = IPAddress("224.0.0.1");
 
 	if (protocol == IP_PROTO_IGMP and dst == routerListen){
 		//click_chatter("RECEIVED IGMP REPORT\n");
 		this->interpretGroupReport(p);
 		return;
 	}
+
+	if (protocol == IP_PROTO_IGMP and dst == generalQuery){
+		// #MAGA
+		this->querierElection(p);
+		return;
+	}
+
 	bool forwardMulticast = false;
 	for (int i = 0; i < f_state.size(); i++){
 		//click_chatter("Comparing: ");
@@ -99,6 +129,15 @@ void ServerInterface::push(int port, Packet* p){
 	//click_chatter("RECEIVED IP?\n");
 	/// Last option, regular IP
 	//output(2).push(p);
+}
+
+void ServerInterface::querierElection(Packet* p){
+	click_ip *ipHeader = (click_ip *)p->data();
+	int protocol = ipHeader->ip_p;
+	IPAddress src = ipHeader->ip_src;
+	if (ntohl(ntohl(f_myIP) > ntohl(src))){
+		/// TODO suppress own queries
+	}
 }
 
 void ServerInterface::interpretGroupReport(Packet* p){
@@ -301,6 +340,8 @@ void run_timer(Timer* timer, void* routerRecord){
 PacketScheduler::PacketScheduler(String multicastAddr, int sendEvery_X_ms, Element* parentInterface,
 		int amountOfTimes, unsigned int outputPort){
 
+	f_suppress = false;
+
 	f_multicastAddr = multicastAddr;
 	f_time = sendEvery_X_ms;
 	f_parentInterface = (ServerInterface*) parentInterface;
@@ -315,11 +356,35 @@ PacketScheduler::PacketScheduler(String multicastAddr, int sendEvery_X_ms, Eleme
 	f_timer = new Timer(sendToSchedulerPacket, this);
 	f_timer->initialize(f_parentInterface);
 	f_timer->schedule_after_msec(f_time);
+
+	f_startupInterval = -1.0;
+	f_startupCount = -1;
+	f_suppressTimer = NULL;
+	f_startupSent = -1;
 }
 
 PacketScheduler::~PacketScheduler(){
 	/// Can't delete packets... its private
 	///delete f_packet;
+}
+
+void PacketScheduler::suppress(double time, double startupInterval, unsigned int startupCount){
+	click_chatter("suppressing %f ms", time);
+	f_timer->clear();
+	f_suppress = true;
+	f_startupInterval = startupInterval;
+	f_startupCount = startupCount;
+	f_startupSent = 0;
+
+	if (f_suppressTimer != NULL){
+		/// TODO delete timer
+		f_suppressTimer = NULL;
+	}
+
+	f_suppressTimer = new Timer(startup, this);
+	f_suppressTimer->initialize(f_parentInterface);
+	f_suppressTimer->schedule_after_msec(time);
+	f_timer->clear();
 }
 
 void PacketScheduler::sendPacket(){
@@ -344,6 +409,28 @@ void sendToSchedulerPacket(Timer* timer, void* scheduler){
 		myScheduler->f_timer->schedule_after_msec(myScheduler->f_time);
 	}else{
 		myScheduler->f_parentInterface->deleteScheduler(myScheduler);
+	}
+}
+
+void startup(Timer* timer, void* scheduler){
+	PacketScheduler* myScheduler = (PacketScheduler*) scheduler;
+
+	click_chatter("Sent %d out of %d pkg", myScheduler->f_startupSent, myScheduler->f_startupCount);
+	if (myScheduler->f_startupSent < myScheduler->f_startupCount){
+		click_chatter("sending startup pkg");
+		/// Note that this only works for infinite stream of packets!
+		/// in sendPacket, the amountOfTimesSent counter is incremented!!!
+		myScheduler->sendPacket();
+		myScheduler->f_suppressTimer->schedule_after_msec(myScheduler->f_startupInterval);
+		myScheduler->f_startupSent++;
+	}else{
+		click_chatter("restarting normal business");
+		myScheduler->f_suppress = false;
+		myScheduler->f_timer->schedule_after_msec(myScheduler->f_time);
+
+		/// TODO delete timer
+		myScheduler->f_suppressTimer = NULL;
+		myScheduler->f_startupSent = 0;
 	}
 }
 

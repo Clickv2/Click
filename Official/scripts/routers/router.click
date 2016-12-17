@@ -177,10 +177,10 @@ elementclass Router {
 		-> toClients::Tee
 
 	toClients[0]
-		-> interface1::ServerInterface(MRP 123, SFLAG false, QRV 5, QQIC 10)
+		-> interface1::ServerInterface(MRP 123, SFLAG false, QRV 5, QQIC 10, IP $client1_address)
 
 	toClients[1]
-		-> interface2::ServerInterface(MRP 123, SFLAG false, QRV 5, QQIC 10)
+		-> interface2::ServerInterface(MRP 123, SFLAG false, QRV 5, QQIC 10, IP $client2_address)
 
 	toClients[2]
 		-> routerInterface::InterfaceElement()
@@ -197,7 +197,7 @@ elementclass Router {
 		// In the future, IGMP queries will be sent from here
 		// The stuff below was temporary
 		// TODO on all interfaces: fix src IP?????
-		-> IPEncap(2, 0.0.0.0, 230.0.0.1)
+		-> IPEncap(2, $client1_address, 230.0.0.1)
 		// TODO don't forget this in other interfaces
 		-> MarkIPHeader
 		-> ToDump(dumps/query1.dump, ENCAP IP)
@@ -216,7 +216,7 @@ elementclass Router {
 		// TODO: Note that interface output 0 is currently not used
 		// In the future, IGMP queries will be sent from here
 		// The stuff below was temporary
-		-> IPEncap(2, 0.0.0.0, 230.0.0.1)
+		-> IPEncap(2, $client2_address, 230.0.0.1)
 		-> ToDump(dumps/query2.dump, ENCAP IP)
 		-> client2_paint
 		//-> Discard
