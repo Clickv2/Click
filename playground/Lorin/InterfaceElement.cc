@@ -72,7 +72,7 @@ CLICK_DECLS
 		int maxRespTime = 0;
 		if(resp_or_interval < 128){maxRespTime = resp_or_interval;}
 		else{ //write client31/interface.Join 230.0.0.1
-			std::string decoder = std::bitset< 8 >( resp_or_interval ).to_string();
+			/*std::string decoder = std::bitset< 8 >( resp_or_interval ).to_string();
 			int exponent = 3;
 			int mantissa = 0;
 			for(int i = 1; i <= 3; i++){
@@ -88,16 +88,23 @@ CLICK_DECLS
 				mantissa += pow(itemp*2, 7-i);
 			}
 			maxRespTime = mantissa * pow(2,exponent);
-			//click_chatter("maxRespTime %d ms\n", maxRespTime);
-		/*	int exponent = 0;
+			//click_chatter("maxRespTime %d ms\n", maxRespTime);*/
+			int exponent = 0;
 			int mantissa = 0;
 			for(int i = 0; i <=3; i++){
 				int checker = 1 << i;
 				if(checker & resp_or_interval){
-					mantissa = mantissa | ; 
+					mantissa = mantissa | 1 << i ; 
 				}
 			}
-		}*/
+			for(int i = 0; i <= 2; i++){
+				int checker = 1 << i+4;
+				if(checker & resp_or_interval){
+					exponent = exponent | 1 << i ; 
+				}
+			}
+			maxRespTime = mantissa * ( 1 << exponent+3);
+		}
 		return maxRespTime;
 	}
 
