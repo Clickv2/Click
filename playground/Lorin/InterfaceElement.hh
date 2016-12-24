@@ -7,6 +7,7 @@
 #include <clicknet/ip.h>
 #include <clicknet/ether.h>
 #include <click/timer.hh>
+#include <click/ipaddress.hh>
 
 
 #ifndef MODE_IS_INCLUDE
@@ -56,25 +57,42 @@ public:
 
 
 class InterfaceElement: public Element{
-//output 0 if mine, 1 if i send message, 2 if not mine
+//output 0 if mine, 1 if i send message, if not mine, nothing is pushed anywhere
 public:
 	int configure(Vector<String> &, ErrorHandler *);
 	InterfaceElement();
 	~InterfaceElement();
-	void add_handlers();
-	static int Leave(const String &conf, Element *e, void* thunk, ErrorHandler *errh);
-	static int Join(const String &conf, Element *e, void* thunk, ErrorHandler *errh);
 	const char* class_name() const{return "InterfaceElement";}
 	const char* port_count() const{return "1/2";}
 	const char* processing() const{return PUSH;}
+	void add_handlers();
+	static int Leave(const String &conf, Element *e, void* thunk, ErrorHandler *errh);
+	static int Join(const String &conf, Element *e, void* thunk, ErrorHandler *errh);
 	void push(int, Packet*); 
+	Timer* reply_timer;
+	void Reply_to_query();
+	int PacketMerge(Packet *p, int QQI, int tempcountdown);
+	void pushReply(Packet *p);
+
+	void run_timer(Timer* timer);
 private:
+	Vector<Packet*> scheduledReports;
+	Vector<String> scheduledTypes;
 	Vector<interface_record*> state;
 	bool filterchange;
 	filter_mode_change change;
-	IPAddress interfaceaddress;
+	int robustness_Var;
+	int amount_replies_sent;
+	int countdown;
+	int Query_response_interval;
+	bool scheduled;
+
+
+
 
 };
+int _decoder(int resp_or_interval);
+int _encoder(int to_encode);
 /*
 struct socket_record{
 	Interface* interface;
