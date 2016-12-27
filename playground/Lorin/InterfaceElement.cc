@@ -18,15 +18,28 @@
 CLICK_DECLS
 
 	void InterfaceElement::run_timer(Timer* timer){
-		click_chatter("Sending reply");
-		this->pushReply(this->scheduledReports[0]);
-		click_chatter("reply sent");
+		//click_chatter("Sending reply");
+		this->pushReply(this->scheduledReports[0],1);
+		//click_chatter("reply sent");
 		this->scheduled = false;
 		this->scheduledReports.pop_front();
-		this->scheduledTypes.pop_front();
-		
+		this->scheduledTypes.pop_front();	
 
 	}
+
+	void run_reportTimer(Timer* timer, void* interfacepr){
+
+		InterfaceElement* interface = static_cast<InterfaceElement*>(interfacepr);
+		click_chatter("pops out %d", interface->Reports.size());
+		interface->pushReply(interface->Reports[0], 1);
+		interface->Reports.pop_front();
+		if(interface->Reports.size() > 0){
+			interface->report_timer->schedule_after_msec(interface->unsolicited_intervals[0]);
+			interface->unsolicited_intervals.pop_front();
+		}
+
+	}
+
 	int _encoder(int to_encode){
 		if(to_encode < 128){ return to_encode; }
 		else{
@@ -60,7 +73,7 @@ CLICK_DECLS
 						
 					}
 					//click_chatter("Code exp %d ms\n", i);
-					click_chatter("Code Test %d ms\n", code);
+					//click_chatter("Code Test %d ms\n", code);
 					return code;
 					
 				}
@@ -72,23 +85,7 @@ CLICK_DECLS
 		int maxRespTime = 0;
 		if(resp_or_interval < 128){maxRespTime = resp_or_interval;}
 		else{ //write client31/interface.Join 230.0.0.1
-			/*std::string decoder = std::bitset< 8 >( resp_or_interval ).to_string();
-			int exponent = 3;
-			int mantissa = 0;
-			for(int i = 1; i <= 3; i++){
-				char temp = decoder[i];
-				int itemp = temp - '0';
-				//exponent += (itemp *2 )**(3-i);
-				exponent += pow(itemp*2, 3-i);
-			}
-			for(int i = 4; i <= 7; i++){
-				char temp = decoder[i];
-				int itemp = temp - '0';
-				//exponent += (itemp *2 )**(3-i);
-				mantissa += pow(itemp*2, 7-i);
-			}
-			maxRespTime = mantissa * pow(2,exponent);
-			//click_chatter("maxRespTime %d ms\n", maxRespTime);*/
+			
 			int exponent = 0;
 			int mantissa = 0;
 			for(int i = 0; i <=3; i++){
@@ -124,19 +121,21 @@ CLICK_DECLS
 
 		this->reply_timer = new Timer(this);
 
+		this->report_timer = new Timer(run_reportTimer, this);
 
 		this->amount_replies_sent = 0;
 		this->countdown = -1;
 		this->scheduled = false;
+		this->unsolicited_response_interval = 1000;
 	}
 
 	InterfaceElement::~InterfaceElement(){
 
 	}
 
-	void InterfaceElement::pushReply(Packet *p){
-		click_chatter("pushing reply");
-		output(1).push(p);
+	void InterfaceElement::pushReply(Packet *p, int outputport){
+		//click_chatter("pushing reply");
+		output(outputport).push(p);
 		//this->replies_to_send -= 1;
 	
 	}
@@ -169,12 +168,13 @@ CLICK_DECLS
 			int QRV = parser.getQRV();
 			int QQIC = parser.getQQIC();
 			this->robustness_Var = QRV;
+			if(this->robustness_Var == 0){this->robustness_Var = 2;}
 			int maxRespTime;
 			int Query_Interval;
 			bool udppacket = false;
 			
-			int test = _encoder(1024);
-			click_chatter("DECODED ENCODER %d ms\n", _decoder(test));
+			//int test = _encoder(1024);
+			//click_chatter("DECODED ENCODER %d ms\n", _decoder(test));
 
 			maxRespTime = _decoder(maxRespCode);
 			Query_Interval = _decoder(QQIC);
@@ -186,7 +186,7 @@ CLICK_DECLS
 
 			String _types;
 			if(groupAddress == IPAddress("")){
-				click_chatter("GENERAL");
+				//click_chatter("GENERAL");
 				_types = "General";
 				for(int i = 0; i < this->state.size(); i++){
 					if(this->state[i]->FilterMode == INCLUDE){
@@ -199,7 +199,7 @@ CLICK_DECLS
 			}
 			//group specific query
 			else if(groupAddress == groupaddress){
-				click_chatter("GROUP SPECIFIC");
+				//click_chatter("GROUP SPECIFIC");
 				_types = "Group";
 				for(int i = 0; i < this->state.size(); i++){
 					if (this->state[i]->multicastAddress == groupAddress){
@@ -227,7 +227,7 @@ CLICK_DECLS
 					this->scheduled = true;
 					this->reply_timer->initialize(this);
 					this->reply_timer->schedule_after_msec(this->countdown);
-					click_chatter("Sending reply after %d ms\n", this->countdown);
+					//click_chatter("Sending reply after %d ms\n", this->countdown);
 
 				
 				}
@@ -256,47 +256,47 @@ CLICK_DECLS
 		int _expirems = _expirestamp.msec();
 		Timestamp _nowstamp = Timestamp::now();
 		int _nowms = _nowstamp.msec();
-		click_chatter("Sending reply after %d ms\n", _nowms);
+		//click_chatter("Sending reply after %d ms\n", _nowms);
 		int timelength = _expirems - _nowms;
 
 		if(this->scheduledTypes[0] == "General"){
 			if(timelength < tempcountdown){
-				click_chatter("merge option 1");
+				//click_chatter("merge option 1");
 				this->scheduledTypes.pop_front();
 				return 0;
 			}
 		}
 
 		if(this->scheduledTypes[1] == "General"){
-			click_chatter("merge option 2");
+			//click_chatter("merge option 2");
 			this->scheduledReports.push_back(reportpacket);
 			this->scheduled = true;
 			this->reply_timer->initialize(this);
 			this->reply_timer->schedule_after_msec(tempcountdown);
-			click_chatter("Sending reply after %d ms\n", tempcountdown);
+			//click_chatter("Sending reply after %d ms\n", tempcountdown);
 			return 0;
 		}
 		if(this->scheduledTypes[1] == "Group" && this->scheduled == false){ //recheck
-			click_chatter("merge option 3");
+			//click_chatter("merge option 3");
 			this->scheduledReports.push_back(reportpacket);
 			this->scheduled = true;
 			this->reply_timer->initialize(this);
 			this->reply_timer->schedule_after_msec(tempcountdown);
-			click_chatter("Sending reply after %d ms\n", tempcountdown);
+			//click_chatter("Sending reply after %d ms\n", tempcountdown);
 			return 0;
 		
 		}
 		if(this->scheduled == true && (this->scheduledTypes[1] == "Group" /* || empty sourcelist, always true in our case */)){
-			click_chatter("merge option 4");
+			//click_chatter("merge option 4");
 			this->scheduledReports.push_back(reportpacket);
 			this->scheduled = true;
 			this->reply_timer->initialize(this);
 			int chosen_countdown = tempcountdown;
 			if(chosen_countdown > timelength){chosen_countdown = timelength;}
 			this->reply_timer->schedule_after_msec(chosen_countdown);
-			click_chatter("Sending reply after %d ms", chosen_countdown);
-			click_chatter(" in stead of after %d ms", tempcountdown);
-			click_chatter( " or %d ms\n", timelength);
+			//click_chatter("Sending reply after %d ms", chosen_countdown);
+			//click_chatter(" in stead of after %d ms", tempcountdown);
+			//click_chatter( " or %d ms\n", timelength);
 			return 0;
 		}
 	}
@@ -344,6 +344,36 @@ CLICK_DECLS
 			reportgenerator.addGroupRecord(CHANGE_TO_INCLUDE, 0, multicastAddressin, Vector<struct in_addr>());
 			Packet* reportpacket = reportgenerator.getCurrentPacket();
 			me->output(1).push(reportpacket);
+			//CHANGING NOW, REMEMBER SPOT
+			int _countdown = 0;
+			me->report_timer->initialize(me);
+			me->Reports.clear();
+			if(me->robustness_Var >= 8){me->robustness_Var = 2;}
+			if(me->robustness_Var>=2){
+				reportgenerator.makeNewPacket(REPORTMESSAGE);
+				reportgenerator.addGroupRecord(CHANGE_TO_EXCLUDE, 0, multicastAddressin, Vector<struct in_addr>());
+				Packet* tempreportpacket = reportgenerator.getCurrentPacket();
+					me->Reports.push_back(tempreportpacket);
+				_countdown = rand() % me->unsolicited_response_interval;
+				//click_chatter("amountofcalls %d", _countdown);
+				me->report_timer->schedule_after_msec(_countdown);
+			}
+			for(int i = 0;i < me->robustness_Var-2; i++){
+				reportgenerator.makeNewPacket(REPORTMESSAGE);
+				reportgenerator.addGroupRecord(CHANGE_TO_EXCLUDE, 0, multicastAddressin, Vector<struct in_addr>());
+				Packet* tempreportpacket = reportgenerator.getCurrentPacket();
+				me->Reports.push_back(tempreportpacket);
+  				srand (time(NULL));
+				_countdown = rand() % me->unsolicited_response_interval;
+				me->unsolicited_intervals.push_back(_countdown);
+				//click_chatter("amountofcalls %d", _countdown);
+
+				/*else{
+					click_chatter("rescheduled");
+					me->report_timer->reschedule_after_msec(_countdown);
+				}*/
+			}
+
 		}
 	}
 
@@ -352,14 +382,14 @@ CLICK_DECLS
 		GroupReportGenerator reportgenerator;
 		InterfaceElement *me = (InterfaceElement* ) e;
 		struct in_addr multicastAddressin;
-        if(cp_va_kparse(conf, me, errh,
-					 "MULTICAST-ADDR", cpkP, cpIPAddress, &multicastAddressin,
-					 //"SOURCELIST",  0, Vector<cpIPAddress>, sourcelist,
-					  cpEnd) < 0){
+		if(cp_va_kparse(conf, me, errh,
+						 "MULTICAST-ADDR", cpkP, cpIPAddress, &multicastAddressin,
+						 //"SOURCELIST",  0, Vector<cpIPAddress>, sourcelist,
+						  cpEnd) < 0){
 
-            return -1;
-        }
-		//struct interface_record record = {multicastAddressin, FilterMode, sourcelist};
+		    return -1;
+		}
+			//struct interface_record record = {multicastAddressin, FilterMode, sourcelist};
 		//interface.append(record)
         // TODO klopt ni?
 		me->filterchange = true;
@@ -388,10 +418,40 @@ CLICK_DECLS
 			reportgenerator.addGroupRecord(CHANGE_TO_EXCLUDE, 0, multicastAddressin, Vector<struct in_addr>());
 			Packet* reportpacket = reportgenerator.getCurrentPacket();
 			me->output(1).push(reportpacket);
+
+			//CHANGING NOW, REMEMBER SPOT
+			me->Reports.clear();
+			int _countdown = 0;
+			me->report_timer->initialize(me);
+			if(me->robustness_Var >= 8){me->robustness_Var = 2;}
+			if(me->robustness_Var>=2){
+				reportgenerator.makeNewPacket(REPORTMESSAGE);
+				reportgenerator.addGroupRecord(CHANGE_TO_EXCLUDE, 0, multicastAddressin, Vector<struct in_addr>());
+				Packet* tempreportpacket = reportgenerator.getCurrentPacket();
+					me->Reports.push_back(tempreportpacket);
+				_countdown = rand() % me->unsolicited_response_interval;
+				//click_chatter("amountofcalls %d", _countdown);
+				me->report_timer->schedule_after_msec(_countdown);
+			}
+			for(int i = 0;i < me->robustness_Var-2; i++){
+				reportgenerator.makeNewPacket(REPORTMESSAGE);
+				reportgenerator.addGroupRecord(CHANGE_TO_EXCLUDE, 0, multicastAddressin, Vector<struct in_addr>());
+				Packet* tempreportpacket = reportgenerator.getCurrentPacket();
+				me->Reports.push_back(tempreportpacket);
+  				srand (time(NULL));
+				_countdown = rand() % me->unsolicited_response_interval;
+				me->unsolicited_intervals.push_back(_countdown);
+				//click_chatter("amountofcalls %d", _countdown);
+
+				/*else{
+					click_chatter("rescheduled");
+					me->report_timer->reschedule_after_msec(_countdown);
+				}*/
+			}
 		}
     }
 	void InterfaceElement::add_handlers(){
-        add_write_handler("Join", &Join, (void*)0);
+		add_write_handler("Join", &Join, (void*)0);
 		add_write_handler("Leave", &Leave, (void*)0);
     }
 
