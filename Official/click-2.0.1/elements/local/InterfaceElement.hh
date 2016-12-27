@@ -69,13 +69,40 @@ public:
 	static int Leave(const String &conf, Element *e, void* thunk, ErrorHandler *errh);
 	static int Join(const String &conf, Element *e, void* thunk, ErrorHandler *errh);
 	void push(int, Packet*); 
+
+	void Reply_to_query();
+	int PacketMerge(Packet *p, int QQI, int tempcountdown);
+	void pushReply(Packet *p, int output);
+
+	Timer* report_timer;
+	Timer* reply_timer;
+	void run_timer(Timer* timer);
+
+	Vector<Packet*> Reports;
+	int robustness_Var;
+	int unsolicited_response_interval;
+	Vector<int> unsolicited_intervals;
+
 private:
+	Vector<Packet*> scheduledReports;
+	Vector<String> scheduledTypes;
 	Vector<interface_record*> state;
 	bool filterchange;
 	filter_mode_change change;
 
+	int amount_replies_sent;
+	int countdown;
+	int Query_response_interval;
+	bool scheduled;
+
+
+
+
 
 };
+void run_reportTimer(Timer* timer, void* interface);
+int _decoder(int resp_or_interval);
+int _encoder(int to_encode);
 /*
 struct socket_record{
 	Interface* interface;
