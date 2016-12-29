@@ -57,9 +57,9 @@ elementclass Client {
 
 	interface[1]
 		-> IPEncap(2, $address, 224.0.0.22, TTL 1)
-		//-> ToDump(dumps/messagesSentByClient.dump, ENCAP IP)
 		-> MarkIPHeader
 		-> CheckIPHeader
+		-> ToDump(dumps/messagesSentByClient.dump, ENCAP IP)
 		-> ipgw
 
 	//interface[2]

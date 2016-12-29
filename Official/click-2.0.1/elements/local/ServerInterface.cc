@@ -38,7 +38,7 @@ int ServerInterface::configure(Vector<String> &conf, ErrorHandler *errh) {
 
 	f_queryInterval = 125000;
 	f_queryResponseInterval = 10000;
-	f_lastMemberQueryInterval = 10;
+	f_lastMemberQueryInterval = 1000;
 
 	// click_chatter("QI: %d", f_queryInterval);
 	// click_chatter("QRI: %d", f_queryResponseInterval);
@@ -46,7 +46,7 @@ int ServerInterface::configure(Vector<String> &conf, ErrorHandler *errh) {
 
 	f_groupMembershipInterval = f_QRV * f_queryInterval + f_queryResponseInterval;
 
-	// click_chatter("GMI: %f", f_groupMembershipInterval);
+	//click_chatter("GMI: %f", f_groupMembershipInterval);
 	f_lastMemberQueryCount = f_QRV;
 	f_lastMemberQueryTime = f_lastMemberQueryCount * f_lastMemberQueryInterval;
 	// click_chatter("LMQC: %d", f_lastMemberQueryCount);
@@ -162,7 +162,7 @@ void ServerInterface::interpretGroupReport(Packet* p){
 
 	Vector<IPAddress> toListen;
 	Vector<IPAddress> toQuery;
-
+	click_chatter("RECEIVED PACKET ON ROUTER");
 	for (int i = 0; i < records.size(); i++){
 		struct GroupRecordStatic currentRecord = records.at(i);
 		if (!SUPPRESS_OUTPUT && currentRecord.nrOfSources != 0){
@@ -237,7 +237,7 @@ void ServerInterface::sendSpecificQuery(IPAddress multicastAddress){
 	f_schedulers.push_back(new PacketScheduler(multicastAddress.unparse().c_str(),
 		f_lastMemberQueryInterval, this, f_lastMemberQueryCount - 1, 0));
 	
-	click_chatter("Sending scheduled query to ");
+	click_chatter("Sending first scheduled query to ");
 	click_chatter(multicastAddress.unparse().c_str());
 	click_chatter("\n");
 	/// TODO this is impossible but it is in the RFC: if the group timer is larger than the LMQT then S-flag is set
@@ -287,11 +287,13 @@ void ServerInterface::updateInterface(Vector<IPAddress>& toListen, Vector<IPAddr
 				//f_toForward.erase(f_toForward.begin() + j);
 
 				/// The router will query this group, set the timer to an interval of LMQT seconds (10 LMQT = 1 second)
+
+				click_chatter("Picking time %d", f_lastMemberQueryInterval);
 				srand(time(NULL));
-				int newGroupTimer = rand() % f_lastMemberQueryTime;
-				f_state.at(j).f_timeOut = newGroupTimer;
+				double newGroupTimer = rand() % f_lastMemberQueryInterval;
+				f_state.at(j).f_timeOut = f_groupMembershipInterval;
 				f_state.at(j).refreshInterest();
-				// click_chatter("Group timer set to %d.\n", newGroupTimer);
+				click_chatter("Group timer set to %f.\n", f_groupMembershipInterval);
 
 				/*GroupQueryGenerator gen;
 				Packet* p = gen.makeNewPacket(f_queryResponseInterval, f_SFlag, f_QRV, f_QQIC, f_state.at(j).f_ip);
@@ -341,7 +343,6 @@ bool RouterRecord::operator==(RouterRecord& otherRecord){
 
 
 void run_timer(Timer* timer, void* routerRecord){
-	click_chatter("TIMER EXPIRED\n");
 	RouterRecord* record = (RouterRecord*) routerRecord;
 	ServerInterface* interface = (ServerInterface*) record->f_parentInterface;
 	interface->deleteRecord(record);

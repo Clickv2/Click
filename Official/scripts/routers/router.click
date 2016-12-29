@@ -145,7 +145,6 @@ elementclass Router {
 	rt[3]
 		-> DropBroadcasts
 		-> client2_paint :: PaintTee(2)
-		-> Print ("Packet")
 		-> client2_ipgw :: IPGWOptions($client2_address)
 		-> FixIPSrc($client2_address)
 		-> client2_ttl :: DecIPTTL
@@ -178,9 +177,11 @@ elementclass Router {
 		-> toClients::Tee
 
 	toClients[0]
+		-> ToDump(dumps/forRouter1.dump, ENCAP IP)
 		-> interface1::ServerInterface(MRC 120, SFLAG false, QRV 5, QQIC 10, IP $client1_address)
 
 	toClients[1]
+		-> ToDump(dumps/forRouter2.dump, ENCAP IP)
 		-> interface2::ServerInterface(MRC 120, SFLAG false, QRV 5, QQIC 10, IP $client2_address)
 
 	toClients[2]
