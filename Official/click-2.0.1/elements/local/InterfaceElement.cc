@@ -364,7 +364,7 @@ CLICK_DECLS
 			if(me->robustness_Var >= 8){me->robustness_Var = 2;}
 			if(me->robustness_Var>=2){
 				reportgenerator.makeNewPacket(REPORTMESSAGE);
-				reportgenerator.addGroupRecord(CHANGE_TO_EXCLUDE, 0, multicastAddressin, Vector<struct in_addr>());
+				reportgenerator.addGroupRecord(CHANGE_TO_INCLUDE, 0, multicastAddressin, Vector<struct in_addr>());
 				Packet* tempreportpacket = reportgenerator.getCurrentPacket();
 					me->Reports.push_back(tempreportpacket);
 				_countdown = rand() % me->unsolicited_response_interval;
@@ -373,7 +373,7 @@ CLICK_DECLS
 			}
 			for(int i = 0;i < me->robustness_Var-2; i++){
 				reportgenerator.makeNewPacket(REPORTMESSAGE);
-				reportgenerator.addGroupRecord(CHANGE_TO_EXCLUDE, 0, multicastAddressin, Vector<struct in_addr>());
+				reportgenerator.addGroupRecord(CHANGE_TO_INCLUDE, 0, multicastAddressin, Vector<struct in_addr>());
 				Packet* tempreportpacket = reportgenerator.getCurrentPacket();
 				me->Reports.push_back(tempreportpacket);
   				srand (time(NULL));

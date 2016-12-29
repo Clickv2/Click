@@ -110,6 +110,8 @@ public:
 
 	void suppress(double time, double startupInterval, unsigned int startupCount);
 
+	void reset();
+
 	static unsigned int f_nextID;
 
 	String f_multicastAddr;
