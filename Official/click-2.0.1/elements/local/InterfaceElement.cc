@@ -30,7 +30,7 @@ CLICK_DECLS
 	void run_reportTimer(Timer* timer, void* interfacepr){
 
 		InterfaceElement* interface = static_cast<InterfaceElement*>(interfacepr);
-		click_chatter("pops out %d", interface->Reports.size());
+		//click_chatter("pops out %d", interface->Reports.size());
 		interface->pushReply(interface->Reports[0], 1);
 		interface->Reports.pop_front();
 		if(interface->Reports.size() > 0){
@@ -146,15 +146,24 @@ CLICK_DECLS
 		IPAddress f_dst = ipHeader->ip_dst;
 		IPAddress groupaddress;
 		bool acceptpacket = false;
+		bool acceptquery = false;
+		interface_record* currentrecord;
 		for(int i = 0; i < this->state.size();i++){
 			IPAddress comp = IPAddress(this->state[i]->multicastAddress);
 			if (f_dst == this->state[i]->multicastAddress && this->state[i]->FilterMode == EXCLUDE){
 				//output(0).push(p);
 				acceptpacket = true;
 				groupaddress = this->state[i]->multicastAddress;
+				currentrecord = this->state[i];
+			}
+			else if (f_dst == this->state[i]->multicastAddress){
+				//output(0).push(p);
+				acceptquery = true;
+				groupaddress = this->state[i]->multicastAddress;
+				currentrecord = this->state[i];
 			}
 		}
-		if(f_dst == IPAddress("224.0.0.1") || acceptpacket == true){
+		if(f_dst == IPAddress("224.0.0.1") || acceptpacket == true || acceptquery == true){
 			//click_chatter("GOT HERE");
 			GroupReportGenerator reportgenerator;
 			GroupQueryParser parser;
@@ -174,14 +183,14 @@ CLICK_DECLS
 			bool udppacket = false;
 			
 			int test = _encoder(1024);
-			click_chatter(" ENCODER %d ms\n", test);
-			click_chatter("DECODED ENCODER %d ms\n", _decoder(test));
+			//click_chatter(" ENCODER %d ms\n", test);
+			//click_chatter("DECODED ENCODER %d ms\n", _decoder(test));
 
 			maxRespTime = _decoder(maxRespCode);
 			Query_Interval = _decoder(QQIC);
 			//maxRespTime = 10;
 
-			click_chatter("maxRespTime %d ms\n", maxRespTime);
+			//click_chatter("maxRespTime %d ms\n", maxRespTime);
 			//General query
 			reportgenerator.makeNewPacket(REPORTMESSAGE);
 
@@ -214,9 +223,10 @@ CLICK_DECLS
 				}
 			}
 			else{
-				//udp packet
+				//(excluded) udp packet
 				udppacket = true;
-				output(0).push(p);
+				if(currentrecord->FilterMode == EXCLUDE)
+					output(0).push(p);
 			}
 			if(not udppacket){
 				Packet* reportpacket = reportgenerator.getCurrentPacket();
@@ -327,6 +337,7 @@ CLICK_DECLS
 		me->filterchange = true;
 		me->change = TO_INCLUDE;
 		bool changed = false;
+		int index_to_remove;
 		for(int i =0;i < me->state.size();i++){
 			if(me->state[i]->multicastAddress == multicastAddressin){
 				if (me->state[i]->FilterMode != INCLUDE){
@@ -337,6 +348,7 @@ CLICK_DECLS
 				}*/
 				me->state[i]->FilterMode = INCLUDE;
 				me->state[i]->sourcelist->clear();
+				index_to_remove = i;
 
 			}
 		}
@@ -376,6 +388,7 @@ CLICK_DECLS
 			}
 
 		}
+		me->state.erase(me->state.begin() + index_to_remove);
 	}
 
 
