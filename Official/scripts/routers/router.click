@@ -219,6 +219,7 @@ elementclass Router {
 		// In the future, IGMP queries will be sent from here
 		// The stuff below was temporary
 		//-> IPEncap(2, $client2_address, 230.0.0.1)
+		-> MarkIPHeader
 		-> ToDump(dumps/query2.dump, ENCAP IP)
 		-> client2_paint
 		//-> Discard

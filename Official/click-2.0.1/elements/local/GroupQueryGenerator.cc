@@ -41,7 +41,7 @@ Packet* GroupQueryGenerator::makeNewPacket(uint8_t maxRespCode, bool SFlag,
     ID++;
     iph->ip_id = htons(ip_id);
     iph->ip_p = IP_PROTO_IGMP;
-    iph->ip_ttl = 1;
+    iph->ip_ttl = 2;
     iph->ip_src = sender;
     iph->ip_dst = receiver;
     iph->ip_sum = click_in_cksum((unsigned char *)iph, sizeof(click_ip));
