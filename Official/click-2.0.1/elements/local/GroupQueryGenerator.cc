@@ -16,31 +16,43 @@ GroupQueryGenerator::GroupQueryGenerator(){}
 
 GroupQueryGenerator::~GroupQueryGenerator(){}
 
+unsigned int GroupQueryGenerator::ID = 0;
+
 Packet* GroupQueryGenerator::makeNewPacket(uint8_t maxRespCode, bool SFlag,
-	uint8_t QRV, uint8_t QQIC, IPAddress dst){
+	uint8_t QRV, uint8_t QQIC, IPAddress multicastAddr, IPAddress sender, IPAddress receiver){
 
 	if (QRV > 7){
 		return 0;
 	}
 
-	int headroom = sizeof(click_ether) + sizeof(click_ip);
-	int totalPacketSize = 0;
-
-	totalPacketSize += sizeof(struct GroupQueryStatic);
-
-    WritablePacket *q = Packet::make(headroom, 0, totalPacketSize, 0);
-
+	int headroom = sizeof(click_ether);
+    WritablePacket *q = Packet::make(headroom, 0, sizeof(click_ip) + sizeof(struct GroupQueryStatic), 0);
     if (!q)
 		return 0;
-    memset(q->data(), '\0', totalPacketSize);
+    memset(q->data(), '\0', sizeof(click_ip) + sizeof(struct GroupQueryStatic));
 
+	click_ip *iph = (click_ip *)q->data();
+    q->set_network_header((const unsigned char *) iph, q->length());
+	
+    iph->ip_v = 4;
+    iph->ip_hl = sizeof(click_ip) >> 2;
+    iph->ip_len = htons(q->length());
+    uint16_t ip_id = ((ID) % 0xFFFF) + 1;
+    ID++;
+    iph->ip_id = htons(ip_id);
+    iph->ip_p = IP_PROTO_IGMP;
+    iph->ip_ttl = 1;
+    iph->ip_src = sender;
+    iph->ip_dst = receiver;
+    iph->ip_sum = click_in_cksum((unsigned char *)iph, sizeof(click_ip));
+	
     /// Get and set the group query header
-	struct GroupQueryStatic* queryHeader = (struct GroupQueryStatic *)(q->data());
+	struct GroupQueryStatic* queryHeader = (struct GroupQueryStatic *)(iph + 1);
 	queryHeader->queryType = 0x11;
 	//printf("MRP: %d\n", maxRespCode);
 	queryHeader->maxRespCode = (maxRespCode);
 	queryHeader->checksum = 0;
-	queryHeader->multicastAddress = dst.in_addr();
+	queryHeader->multicastAddress = multicastAddr.in_addr();
 
 	uint8_t Resv_S_QRV = QRV;
 	if (SFlag){
@@ -54,9 +66,9 @@ Packet* GroupQueryGenerator::makeNewPacket(uint8_t maxRespCode, bool SFlag,
 	queryHeader->QQIC = (QQIC);
 	queryHeader->nrOfSources = 0;
 
-	queryHeader->checksum = click_in_cksum((const unsigned char *)queryHeader, totalPacketSize);
+	queryHeader->checksum = click_in_cksum((const unsigned char *)queryHeader, sizeof(struct GroupQueryStatic));
 	
-	q->set_dst_ip_anno(dst);
+	q->set_dst_ip_anno(receiver);
 	
 	return q;
 
@@ -158,7 +170,7 @@ Packet* GroupQueryGeneratorElement::make_packet(){
 	}
 
 	GroupQueryGenerator gen;
-	Packet* result = gen.makeNewPacket(128, SFlag, 2, 2, f_dst);
+	Packet* result = gen.makeNewPacket(128, SFlag, 2, 2, f_dst, f_src, f_dst);
 	return result;
 }
 

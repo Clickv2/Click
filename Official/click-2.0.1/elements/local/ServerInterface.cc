@@ -11,6 +11,7 @@
 #include <time.h>
 #include <stdlib.h>
 #include <iostream>
+#include "InterfaceElement.hh"
 
 #include <iostream>
 using namespace std;
@@ -24,13 +25,16 @@ ServerInterface::~ServerInterface() {}
 
 int ServerInterface::configure(Vector<String> &conf, ErrorHandler *errh) {
 	if (cp_va_kparse(conf, this, errh,
-			"MRP", cpkM, cpInteger, &f_maximumMaxRespCode,
+			"MRC", cpkM, cpInteger, &f_maximumMaxRespCode,
 			"SFLAG", cpkM, cpBool, &f_SFlag,
 			"QRV", cpkM, cpInteger, &f_QRV,
 			"QQIC", cpkM, cpInteger, &f_QQIC,
 			"IP", cpkM, cpIPAddress, &f_myIP,
 			 cpEnd) < 0)
 		return -1;
+
+	click_chatter("MRC %d", (f_maximumMaxRespCode));
+	click_chatter("MRT %d", _decoder(f_maximumMaxRespCode));
 
 	f_queryInterval = 125000;
 	f_queryResponseInterval = 10000;
@@ -56,7 +60,7 @@ int ServerInterface::configure(Vector<String> &conf, ErrorHandler *errh) {
 	f_startupQueryCount = f_QRV;
 
 	f_schedulers.push_back(
-		new PacketScheduler("", f_queryInterval / 100, this, -1, 0));
+		new PacketScheduler("", f_queryInterval, this, -1, 0));
 
 	return 0;
 }
@@ -198,9 +202,11 @@ void ServerInterface::interpretGroupReport(Packet* p){
 			continue;
 		}
 		if (filterMode == MODE_IS_INCLUDE){
+			click_chatter("Got reply of client: no reception please.");
 			continue;
 		}
 		if (filterMode == MODE_IS_EXCLUDE){
+			click_chatter("Got reply of client: i want reception please.");
 			/// TODO refresh timer later
 			bool alreadyInList = false;
 			for (int i = 0; i < toListen.size(); i++){
@@ -223,11 +229,13 @@ void ServerInterface::sendSpecificQuery(IPAddress multicastAddress){
 	/// if S-flag is clear (false) => update group timer
 	GroupQueryGenerator generator;
 	IPAddress dst = IPAddress("224.0.0.1");
-	Packet* p = generator.makeNewPacket(f_maximumMaxRespCode, f_SFlag, f_QRV, f_QQIC, multicastAddress);
+	Packet* p = generator.makeNewPacket(f_maximumMaxRespCode, f_SFlag, f_QRV, f_QQIC, multicastAddress,
+		f_myIP, multicastAddress);
 
 	/// TODO Schedule LMQC - 1 retransmission sent every LMQI over LMQT
 	/// TODO pick rnd LMQI
-	f_schedulers.push_back(new PacketScheduler(multicastAddress.unparse().c_str(), f_lastMemberQueryInterval, this, f_lastMemberQueryCount - 1, 0));
+	f_schedulers.push_back(new PacketScheduler(multicastAddress.unparse().c_str(),
+		f_lastMemberQueryInterval, this, f_lastMemberQueryCount - 1, 0));
 	
 	click_chatter("Sending scheduled query to ");
 	click_chatter(multicastAddress.unparse().c_str());
@@ -240,7 +248,6 @@ void ServerInterface::sendSpecificQuery(IPAddress multicastAddress){
 
 void ServerInterface::updateInterface(Vector<IPAddress>& toListen, Vector<IPAddress>& toQuery){
 	for (int j = 0; j < toListen.size(); j++){
-		click_chatter("TOLISTEN\n");
 		bool alreadyInList = false;
 		for (int i = 0; i < f_state.size(); i++){
 			if (toListen.at(j) == f_state.at(i).f_ip){
@@ -259,7 +266,7 @@ void ServerInterface::updateInterface(Vector<IPAddress>& toListen, Vector<IPAddr
 		if (! alreadyInList){
 			click_chatter("Now listening to ");
 			click_chatter(toListen.at(j).unparse().c_str());
-			click_chatter("timer expires in %f ms\n", f_groupMembershipInterval);
+			click_chatter("timer expires in %f ms\n\n\n", f_groupMembershipInterval);
 			/// TODO remove hardcoded timeout
 			RouterRecord rec = RouterRecord(toListen.at(j), MODE_IS_EXCLUDE, f_groupMembershipInterval, this);
 			f_state.push_back(rec);
@@ -274,9 +281,9 @@ void ServerInterface::updateInterface(Vector<IPAddress>& toListen, Vector<IPAddr
 	for (int i = 0; i < toQuery.size(); i++){
 		for (int j = 0; j < f_state.size(); j++){
 			if (toQuery.at(i) == f_state.at(j).f_ip){
-				click_chatter("query");
+				click_chatter("querying");
 				click_chatter(f_state.at(j).f_ip.unparse().c_str());
-				click_chatter("\n");
+				click_chatter("\n\n\n");
 				//f_toForward.erase(f_toForward.begin() + j);
 
 				/// The router will query this group, set the timer to an interval of LMQT seconds (10 LMQT = 1 second)
@@ -284,7 +291,7 @@ void ServerInterface::updateInterface(Vector<IPAddress>& toListen, Vector<IPAddr
 				int newGroupTimer = rand() % f_lastMemberQueryTime;
 				f_state.at(j).f_timeOut = newGroupTimer;
 				f_state.at(j).refreshInterest();
-				click_chatter("Group timer set to %d.\n", newGroupTimer);
+				// click_chatter("Group timer set to %d.\n", newGroupTimer);
 
 				/*GroupQueryGenerator gen;
 				Packet* p = gen.makeNewPacket(f_queryResponseInterval, f_SFlag, f_QRV, f_QQIC, f_state.at(j).f_ip);
@@ -399,8 +406,16 @@ void PacketScheduler::sendPacket(){
 	click_chatter("\n");
 
 	GroupQueryGenerator generator;
+
+	String dst = "";
+	if (f_multicastAddr != ""){
+		dst = f_multicastAddr;
+	}else{
+		dst = "224.0.0.1";
+	}
+
 	Packet* p = generator.makeNewPacket(f_parentInterface->f_maximumMaxRespCode, f_parentInterface->f_SFlag,
-		f_parentInterface->f_QRV, f_parentInterface->f_QQIC, IPAddress(f_multicastAddr));
+		f_parentInterface->f_QRV, f_parentInterface->f_QQIC, IPAddress(f_multicastAddr), f_parentInterface->f_myIP, IPAddress(dst));
 
 	f_parentInterface->output(f_outputPort).push(p);
 

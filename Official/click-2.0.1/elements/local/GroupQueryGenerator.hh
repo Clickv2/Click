@@ -58,11 +58,13 @@ struct GroupQueryStatic{
 
 class GroupQueryGenerator{
 	// Doesn't set IP header!!! use IPEncap(2, SRC, DST) after this
+	static unsigned int ID;
 public:
 	GroupQueryGenerator();
 	~GroupQueryGenerator();
 
-	Packet* makeNewPacket(uint8_t maxRespCode, bool SFlag, uint8_t QRV, uint8_t QQIC, IPAddress multicastAddr);
+	Packet* makeNewPacket(uint8_t maxRespCode, bool SFlag, uint8_t QRV, uint8_t QQIC, IPAddress multicastAddr,
+		IPAddress sender, IPAddress receiver);
 		/// Makes the packet if it's invalid, this will return 0
 		/// assumes 0 sources!!!
 };
