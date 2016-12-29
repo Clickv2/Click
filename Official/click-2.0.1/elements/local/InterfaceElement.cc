@@ -45,8 +45,8 @@ CLICK_DECLS
 		else{
 			for(int i = 3;i <= 10; i++){
 				int exp = 1 << i;
-				if(to_encode/exp <= 15){
-					int mantissa = to_encode/exp;
+				if(to_encode/exp <= 31 && to_encode/exp >= 16){
+					int mantissa = (to_encode/exp)-16;
 					//found mantissa -> Encoding
 					int code = 0;
 					code = code | 128;
@@ -100,7 +100,7 @@ CLICK_DECLS
 					exponent = exponent | 1 << i ; 
 				}
 			}
-			maxRespTime = mantissa * ( 1 << exponent+3);
+			maxRespTime = (mantissa | 16) * ( 1 << exponent+3);
 		}
 		return maxRespTime;
 	}
@@ -173,8 +173,9 @@ CLICK_DECLS
 			int Query_Interval;
 			bool udppacket = false;
 			
-			//int test = _encoder(1024);
-			//click_chatter("DECODED ENCODER %d ms\n", _decoder(test));
+			int test = _encoder(1024);
+			click_chatter(" ENCODER %d ms\n", test);
+			click_chatter("DECODED ENCODER %d ms\n", _decoder(test));
 
 			maxRespTime = _decoder(maxRespCode);
 			Query_Interval = _decoder(QQIC);
