@@ -107,12 +107,14 @@ void ServerInterface::push(int port, Packet* p){
 	if (protocol == IP_PROTO_IGMP and dst == routerListen){
 		//click_chatter("RECEIVED IGMP REPORT\n");
 		this->interpretGroupReport(p);
+		p->kill();
 		return;
 	}
 
 	if (protocol == IP_PROTO_IGMP and dst == generalQuery){
 		// #MAGA
 		this->querierElection(p);
+		p->kill();
 		return;
 	}
 
@@ -134,6 +136,7 @@ void ServerInterface::push(int port, Packet* p){
 		output(1).push(p);
 		return;
 	}
+	p->kill();
 	//click_chatter("RECEIVED IP?\n");
 	/// Last option, regular IP
 	//output(2).push(p);

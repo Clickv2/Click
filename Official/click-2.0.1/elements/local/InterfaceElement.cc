@@ -257,7 +257,7 @@ CLICK_DECLS
 		/*if(not pushed){
 			output(2).push(p);
 		}*/		
-		
+		p->kill();
 	}
 
 
