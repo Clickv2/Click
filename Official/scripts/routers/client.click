@@ -52,7 +52,7 @@ elementclass Client {
 
 	rt[2]
 		-> interface::InterfaceElement
-		//-> ToDump(dumps/forClient.dump, ENCAP IP)
+		-> ToDump(dumps/forClient.dump, ENCAP IP)
 		-> [1]output
 
 	interface[1]
