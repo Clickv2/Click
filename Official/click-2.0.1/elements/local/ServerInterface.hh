@@ -7,6 +7,7 @@
 #include <clicknet/ip.h>
 #include <clicknet/ether.h>
 #include <click/timer.hh>
+#include "RouterInterfaceConnector.hh"
 
 CLICK_DECLS
 
@@ -21,7 +22,7 @@ public:
 	~ServerInterface();
 	
 	const char *class_name() const	{ return "ServerInterface"; }
-	const char *port_count() const	{ return "1/3"; }
+	const char *port_count() const	{ return "1/4"; }
 	const char *processing() const	{ return PUSH; }
 	int configure(Vector<String>&, ErrorHandler*);
 	
@@ -42,6 +43,10 @@ public:
 	void interpretGroupReport(Packet* p);
 	void sendSpecificQuery(IPAddress multicastAddress);
 	void updateInterface(Vector<IPAddress>& toListen, Vector<IPAddress>& toQuery);
+
+	void add_handlers();
+	static int TakeOverQuery(const String &conf, Element *e, void* thunk, ErrorHandler *errh);
+	static int PassiveQuery(const String &conf, Element *e, void* thunk, ErrorHandler *errh);
 
 	/// TODO fix maxrespcode => code and time are used across each other
 	uint8_t f_maximumMaxRespCode;
@@ -77,6 +82,8 @@ public:
 
 	Vector<RouterRecord> f_state;
 	Vector<PacketScheduler*> f_schedulers;
+
+	RouterInterfaceConnector* f_interfaceConnector;
 };
 
 class RouterRecord{
@@ -103,6 +110,7 @@ void run_timer(Timer* timer, void* routerRecord);
 class PacketScheduler{
 public:
 	PacketScheduler(String multicastAddr, int sendEvery_X_ms, Element* parentInterface, int amountOfTimes, unsigned int outputPort);
+	PacketScheduler(GroupReportGenerator gen, int sendEvery_X_ms, Element* parentInterface, int amountOfTimes, unsigned int outputPort);
 
 	~PacketScheduler();
 
@@ -115,6 +123,7 @@ public:
 	static unsigned int f_nextID;
 
 	String f_multicastAddr;
+	GroupReportGenerator f_gen;
 	int f_time;
 	Timer* f_timer;
 	ServerInterface* f_parentInterface;

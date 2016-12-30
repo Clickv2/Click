@@ -12,6 +12,8 @@
 //	[2]: packets sent to the 192.168.3.0/24 network
 //  [3]: packets destined for the router itself
 
+connect::RouterInterfaceConnector;
+
 elementclass Router {
 	$server_address, $client1_address, $client2_address |
 
@@ -179,11 +181,11 @@ elementclass Router {
 
 	toClients[0]
 		-> ToDump(dumps/forRouter1.dump, ENCAP IP)
-		-> interface1::ServerInterface(MRC 120, SFLAG false, QRV 5, QQIC 10, IP $client1_address)
+		-> interface1::ServerInterface(MRC 120, SFLAG false, QRV 5, QQIC 10, IP $client1_address, CONNECTOR connect)
 
 	toClients[1]
 		-> ToDump(dumps/forRouter2.dump, ENCAP IP)
-		-> interface2::ServerInterface(MRC 120, SFLAG false, QRV 5, QQIC 10, IP $client2_address)
+		-> interface2::ServerInterface(MRC 120, SFLAG false, QRV 5, QQIC 10, IP $client2_address, CONNECTOR connect)
 
 	toClients[2]
 		-> routerInterface::InterfaceElement()
@@ -213,6 +215,18 @@ elementclass Router {
 
 	interface1 [2]
 		-> Discard
+
+	interface1 [3]
+		-> IPEncap(2, $client1_address, 224.0.0.1, TTL 2)
+		-> Print("PKT")
+		-> ToDump(dumps/eureka.dump, ENCAP IP)
+		-> Discard
+		//-> client1_paint
+
+	interface2 [3]
+		-> IPEncap(2, $client2_address, 224.0.0.1, TTL 2)
+		-> ToDump(dumps/eureka.dump)
+		-> client2_paint
 
 	paintSwitch [3]
 		-> interface2
