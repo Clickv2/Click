@@ -1,7 +1,7 @@
 #include <click/config.h>
 #include <click/confparse.hh>
 #include <click/error.hh>
-#include "ServerInterface.hh"
+#include "RouterInterface.hh"
 #include "GroupRecordGenerator.hh"
 #include "GroupQueryGenerator.hh"
 #include <clicknet/ip.h>
@@ -22,18 +22,16 @@ using namespace std;
 CLICK_DECLS
 
 int RouterInterfaceConnector::configure(Vector<String> & conf, ErrorHandler * errh){
-	click_chatter("good");
 	if (cp_va_kparse(conf, this, errh, cpEnd) < 0){
 		return -1;
 	}
-	click_chatter("ness");
 	return 0;
 }
 
 RouterInterfaceConnector::RouterInterfaceConnector(){}
 RouterInterfaceConnector::~RouterInterfaceConnector(){}
 
-void RouterInterfaceConnector::logonElement(ServerInterface* interface){
+void RouterInterfaceConnector::logonElement(RouterInterface* interface){
 	f_interfaces.push_back(interface);
 }
 
@@ -42,7 +40,7 @@ GroupReportGenerator RouterInterfaceConnector::getQueryResponse(){
 	gen.makeNewPacket(REPORTMESSAGE);
 	set<String> addresses;
 	for (int i = 0; i < f_interfaces.size(); i++){
-		ServerInterface* currentInterface = f_interfaces.at(i);
+		RouterInterface* currentInterface = f_interfaces.at(i);
 		for (int j = 0; j < currentInterface->f_state.size(); j++){
 			if (currentInterface->f_state.at(j).f_filterMode == MODE_IS_INCLUDE){
 				continue;

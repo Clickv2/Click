@@ -14,7 +14,7 @@
 
 CLICK_DECLS
 
-class ServerInterface;
+class RouterInterface;
 
 class RouterInterfaceConnector: public Element{
 public:
@@ -26,12 +26,12 @@ public:
 	const char* port_count() const{return "0/0";}
 	const char* processing() const{return PUSH;}
 
-	void logonElement(ServerInterface* interface);
+	void logonElement(RouterInterface* interface);
 		/// Registers the interface of the router so that others may get info from him
 
 	GroupReportGenerator getQueryResponse();
 
-	Vector<ServerInterface*> f_interfaces;
+	Vector<RouterInterface*> f_interfaces;
 };
 
 CLICK_ENDDECLS
