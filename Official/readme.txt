@@ -12,17 +12,14 @@ It has one input and 2 outputs:
 You'll be able to join or leave a certain multicast address by calling a handler as follows:
 write clientxx/interface.Join x.x.x.x
 Where the current multicast address is set to 230.0.0.1
-For the router it's a tiny bit different (a router can act like a client as well)
-write router/routerInterface.Join x.x.x.x
 
-In the router, you'll see a ServerInterface element. The name is incorrect, but it was far too late to change that. Future updates will adjust this name.
+In the router, you'll see a RouterInterface element.
 It has one input and three outputs.
 	- Output 0 is to send IGMP queries
 	- Output 1 is to forward the IGMP packets (not messages)
-	- Output 2 is for packets that are given on the input, but that are not used by IGMP, or that are incorrect
+	- Output 2 is for outgoing responses to queries. In the current script, packets are discarded because there's no other router in the subnets. There is a simulation of querier election possible but we'll discuss that later.
 
 There are also some files that will create and parse packets, these can be found in GroupQueryGenerator.xx and GroupRecordGenerator.xx.
-IGMPFilter.xx is currently not used but might be useful in the future. It filters packets that are IGMP packets from those that aren't.
 
 
 
@@ -40,13 +37,19 @@ This will compile click and run scripts/ipnetwork.click.
 run.sh: the same as runAndCompileScript.sh but without the compiling
 
 The directory structure looks as follows:
-click-<version>    scripts    runAndCompileScript.sh	install.sh    run.sh	dumps
 
 within scripts: your script
-within click: ofcourse your click with in /elements/local your elements
+within click: ofcourse your click with in /elements/local our elements
 
-Now we have provided the scripts map, in the scripts you'll see ToDump elements commented out. If you want to make use of this, uncomment them and make a "dumps" directory (see directory structure above). This is just to show you what our elements produce. The name of the dump files are obvious.
 
+
+To simulate querier election:
+There's a handler for a RouterInterface which simulates a query being received.
+	write router/interfacex.TakeOverQuery
+	write router/interfacex.PassiveQuery
+where the x is either a 1 or a 2 (in the current script).
+The first one is when simulating that the router lost a query (and schedules a response accordingly) where the second one doesn't affect the router at all. To schedule this response, the state of all router interfaces is needed, that's where the RouterInterfaceConnector comes into play. Its name is self explanatory.
+When a router won or lost an election, it is printed in the terminal (because waiting for the query suppression to be over would take a long time). We know this doesn't prove it works, but it proves we understand the protocol.
 
 
 

@@ -107,7 +107,6 @@ int RouterInterface::configure(Vector<String> &conf, ErrorHandler *errh) {
 void RouterInterface::deleteRecord(RouterRecord* record){
 	for(int i = 0; i < f_state.size(); i++){
 		if (f_state.at(i) == *record){
-			click_chatter("\n\n\nDELETED RECORD\n\n\n");
 			f_state.erase(f_state.begin() + i);
 			return;
 		}
@@ -124,8 +123,7 @@ void RouterInterface::deleteScheduler(PacketScheduler* scheduler){
 				/// TODO if segfault occurs, check here
 				f_schedulers.erase(f_schedulers.begin() + i);
 				removed = true;
-				click_chatter("\n\n\nDELETE SCHEDULER\n\n\n");
-				delete scheduler;
+				//delete scheduler;
 				break;
 			}
 		}
@@ -155,8 +153,8 @@ void RouterInterface::push(int port, Packet* p){
 	bool forwardMulticast = false;
 	for (int i = 0; i < f_state.size(); i++){
 		if (dst == f_state.at(i).f_ip){
-			click_chatter("Sending packet from router (if the client already left, wait for the timeout (60s))");
-			click_chatter("You can wait for the general queries to be sent to see them in action (~125s if i remember correctly).\n");
+			//click_chatter("Sending packet from router (if the client already left, wait for the timeout (60s))");
+			//click_chatter("You can wait for the general queries to be sent to see them in action (~125s if i remember correctly).\n");
 			forwardMulticast = true;
 			break;
 		}
@@ -173,7 +171,8 @@ void RouterInterface::querierElection(Packet* p){
 	click_ip *ipHeader = (click_ip *)p->data();
 	int protocol = ipHeader->ip_p;
 	IPAddress src = ipHeader->ip_src;
-	if (ntohl(ntohl(f_myIP) > ntohl(src))){
+	if (ntohl(f_myIP) > ntohl(src)){
+		click_chatter("Lost election");
 		for (int i = 0; i < f_schedulers.size(); i++){
 			if (f_schedulers.at(i)->f_multicastAddr == ""){
 				/// Empty string means general query!!!
@@ -183,7 +182,7 @@ void RouterInterface::querierElection(Packet* p){
 				parser.parsePacket(p);
 				f_QRV = parser.getQRV();
 				int maxRespTime = _decoder(parser.getMaxRespCode()) * 100;
-				click_chatter("NEW QRV: %d, MRT: %d, MRC: %d", f_QRV, maxRespTime, parser.getMaxRespCode());
+				//click_chatter("NEW QRV: %d, MRT: %d, MRC: %d", f_QRV, maxRespTime, parser.getMaxRespCode());
 
 
 
@@ -192,6 +191,8 @@ void RouterInterface::querierElection(Packet* p){
 				return;
 			}
 		}
+	}else{
+		click_chatter("won election");
 	}
 }
 
@@ -206,7 +207,7 @@ void RouterInterface::interpretGroupReport(Packet* p){
 	for (int i = 0; i < records.size(); i++){
 		struct GroupRecordStatic currentRecord = records.at(i);
 		if (!SUPPRESS_OUTPUT && currentRecord.nrOfSources != 0){
-			click_chatter("NrOfSources in report is non-empty.\n");
+			//click_chatter("NrOfSources in report is non-empty.\n");
 		}
 		uint8_t filterMode = currentRecord.recordType;
 		IPAddress mcaddr = IPAddress(currentRecord.multicastAddress);
@@ -271,7 +272,7 @@ void RouterInterface::sendSpecificQuery(IPAddress multicastAddress){
 	for (int i = 0; i < f_schedulers.size(); i++){
 		if (f_schedulers.at(i)->f_multicastAddr == multicastAddress.unparse().c_str()){
 
-			click_chatter("\n\n\nRESET SCHEDULER\n\n\n");
+			//click_chatter("\n\n\nRESET SCHEDULER\n\n\n");
 
 			f_schedulers.at(i)->reset();
 			found = true;
@@ -335,7 +336,7 @@ void RouterInterface::updateInterface(Vector<IPAddress>& toListen, Vector<IPAddr
 
 void RouterInterface::add_handlers(){
 	add_write_handler("TakeOverQuery", &TakeOverQuery, (void*)0);
-	add_write_handler("PassiveQuery", &TakeOverQuery, (void*)0);
+	add_write_handler("PassiveQuery", &PassiveQuery, (void*)0);
 }
 
 int RouterInterface::PassiveQuery(const String &conf, Element *e, void* thunk, ErrorHandler *errh){
@@ -390,10 +391,15 @@ RouterRecord::RouterRecord(IPAddress ip, uint8_t filterMode, double timeOut, Ele
 	f_groupTimer->schedule_after_msec(f_timeOut);
 }
 
-RouterRecord::~RouterRecord(){/*TODO delete timer*/}
+RouterRecord::~RouterRecord(){
+	if (f_groupTimer != NULL){
+		/// TODO if segfault occurs, check here
+		//delete f_groupTimer;
+	}
+}
 
 void RouterRecord::refreshInterest(){
-	click_chatter("\n\nREFRESH INTEREST\n\n");
+	//click_chatter("\n\nREFRESH INTEREST\n\n");
 	f_groupTimer->unschedule();
 	f_groupTimer->schedule_after_msec(f_timeOut);
 	f_filterMode = MODE_IS_EXCLUDE;
@@ -415,9 +421,9 @@ void run_timer(Timer* timer, void* routerRecord){
 	RouterRecord* record = (RouterRecord*) routerRecord;
 	RouterInterface* interface = (RouterInterface*) record->f_parentInterface;
 	interface->deleteRecord(record);
-	click_chatter("\n\n\nDELETING RECORD (delay is normal because this uses timeouts)\n\n\n");
+	//click_chatter("\n\n\nDELETING RECORD (delay is normal because this uses timeouts)\n\n\n");
 
-	delete record;
+	//delete record;
 }
 
 
@@ -490,24 +496,22 @@ PacketScheduler::~PacketScheduler(){
 	// if (f_packet != NULL){
 	// 	f_packet->kill();
 	// }
-	click_chatter("Removing scheduler");
+	//click_chatter("Removing scheduler");
 }
 
 void PacketScheduler::suppress(double time, double startupInterval, unsigned int startupCount){
 	//click_chatter("suppressing %f ms", time);
 	f_timer->clear();
 
-/// TODO RERMOVA
-	time /= 100;
-
-	click_chatter("suppressed %f ms", time);
+	//click_chatter("suppressed %f ms", time);
 	f_suppress = true;
 	f_startupInterval = startupInterval;
 	f_startupCount = startupCount;
 	f_startupSent = 0;
 
 	if (f_suppressTimer != NULL){
-		/// TODO delete timer
+		/// TODO if segfault occurs, check here
+		delete f_suppressTimer;
 		f_suppressTimer = NULL;
 	}
 
@@ -526,16 +530,6 @@ void PacketScheduler::reset(){
 }
 
 void PacketScheduler::sendPacket(){
-	// click_chatter("Sending scheduled query to ");
-	// click_chatter(f_multicastAddr.c_str());
-	// click_chatter("\n");
-	if (f_multicastAddr.c_str() == ""){
-		click_chatter("\nSending General query\n");
-	}else{
-		click_chatter("\nSending scheduled query to ");
-		click_chatter(f_multicastAddr.c_str());
-		click_chatter("\n");
-	}
 	if (f_multicastAddr != "-1"){
 		GroupQueryGenerator generator;
 
@@ -570,12 +564,9 @@ void sendToSchedulerPacket(Timer* timer, void* scheduler){
 }
 
 void startup(Timer* timer, void* scheduler){
-	click_chatter("startup");
 	PacketScheduler* myScheduler = (PacketScheduler*) scheduler;
 
-	//click_chatter("Sent %d out of %d pkg", myScheduler->f_startupSent, myScheduler->f_startupCount);
 	if (myScheduler->f_startupSent < myScheduler->f_startupCount){
-		//click_chatter("sending startup pkg");
 		myScheduler->sendPacket();
 		myScheduler->f_suppressTimer->schedule_after_msec(myScheduler->f_startupInterval / 10);
 		myScheduler->f_amountOfTimesSent--;
@@ -586,7 +577,9 @@ void startup(Timer* timer, void* scheduler){
 		myScheduler->f_timer->schedule_after_msec(myScheduler->f_time);
 
 
-		/// TODO delete timer
+		/// TODO if segfault occurs, check here
+		
+		//delete myScheduler->f_suppressTimer;
 		myScheduler->f_suppressTimer = NULL;
 		myScheduler->f_startupSent = 0;
 	}

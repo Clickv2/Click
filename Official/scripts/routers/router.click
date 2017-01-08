@@ -70,7 +70,6 @@ elementclass Router {
 
 	// Input and output paths for interface 2
 	input[2]
-		-> ToDump(dumps/reports.dump)
 		-> HostEtherFilter($client2_address)
 		-> client2_class :: Classifier(12/0806 20/0001, 12/0806 20/0002, -)
 		-> ARPResponder($client2_address)
@@ -125,7 +124,6 @@ elementclass Router {
 		-> FixIPSrc($client1_address)
 		-> client1_ttl :: DecIPTTL
 		-> client1_frag :: IPFragmenter(1500)
-		-> ToDump(dumps/outgoing.dump, ENCAP IP)
 		-> client1_arpq;
 	
 	client1_paint[1]
@@ -155,7 +153,6 @@ elementclass Router {
 		-> client2_arpq;
 
 	rt[4]
-		//-> ToDump(dumps/multicastReceivedOnRouter.dump, ENCAP IP)
 		-> paintSwitch::PaintSwitch
 	
 	client2_paint[1]
@@ -180,16 +177,13 @@ elementclass Router {
 		-> toClients::Tee
 
 	toClients[0]
-		-> ToDump(dumps/forRouter1.dump, ENCAP IP)
-		-> interface1::ServerInterface(MRC 120, SFLAG false, QRV 5, QQIC 10, IP $client1_address, CONNECTOR connect)
+		-> interface1::RouterInterface(MRC 120, SFLAG false, QRV 5, QQIC 10, IP $client1_address, QUERY_INTERVAL 125, QUERY_RESPONSE_INTERVAL 100, CONNECTOR connect)
 
 	toClients[1]
-		-> ToDump(dumps/forRouter2.dump, ENCAP IP)
-		-> interface2::ServerInterface(MRC 120, SFLAG false, QRV 5, QQIC 10, IP $client2_address, CONNECTOR connect)
+		-> interface2::RouterInterface(MRC 120, SFLAG false, QRV 5, QQIC 10, IP $client1_address, QUERY_INTERVAL 125, QUERY_RESPONSE_INTERVAL 100, CONNECTOR connect)
 
 	toClients[2]
 		-> routerInterface::InterfaceElement()
-		//-> ToDump(dumps/forRouter.dump, ENCAP IP)
 		-> [3]output
 
 	routerInterface[1]
@@ -198,19 +192,10 @@ elementclass Router {
 
 	paintSwitch [2]
 		-> interface1
-		// TODO: Note that interface output 0 is currently not used
-		// In the future, IGMP queries will be sent from here
-		// The stuff below was temporary
-		// TODO on all interfaces: fix src IP?????
-		//-> IPEncap(2, $client1_address, 230.0.0.1)
-		// TODO don't forget this in other interfaces
 		-> MarkIPHeader
-		-> ToDump(dumps/query1.dump, ENCAP IP)
 		-> client1_paint
-		//-> Discard
 
 	interface1 [1]
-		-> ToDump(dumps/udp.dump, ENCAP IP)
 		-> client1_paint
 
 	interface1 [2]
@@ -218,26 +203,16 @@ elementclass Router {
 
 	interface1 [3]
 		-> IPEncap(2, $client1_address, 224.0.0.1, TTL 2)
-		-> Print("PKT")
-		-> ToDump(dumps/eureka.dump, ENCAP IP)
 		-> Discard
-		//-> client1_paint
 
 	interface2 [3]
 		-> IPEncap(2, $client2_address, 224.0.0.1, TTL 2)
-		-> ToDump(dumps/eureka.dump)
-		-> client2_paint
+		-> Discard
 
 	paintSwitch [3]
 		-> interface2
-		// TODO: Note that interface output 0 is currently not used
-		// In the future, IGMP queries will be sent from here
-		// The stuff below was temporary
-		//-> IPEncap(2, $client2_address, 230.0.0.1)
 		-> MarkIPHeader
-		-> ToDump(dumps/query2.dump, ENCAP IP)
 		-> client2_paint
-		//-> Discard
 
 	interface2 [1]
 		-> client2_paint
