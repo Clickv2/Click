@@ -464,9 +464,42 @@ CLICK_DECLS
 			}
 		}
     }
+
+	int InterfaceElement::QuietLeave(const String &conf, Element *e, void* thunk, ErrorHandler *errh){
+		GroupReportGenerator reportgenerator;
+		InterfaceElement *me = (InterfaceElement* ) e;
+		struct in_addr multicastAddressin;
+        if(cp_va_kparse(conf, e, errh,
+					 "MULTICAST-ADDR", cpkP, cpIPAddress, &multicastAddressin,
+					 //"SOURCELIST",  0, Vector<cpIPAddress>, sourcelist,
+					  cpEnd) < 0){
+            return -1;
+        }
+		//struct interface_record record = {multicastAddressin, FilterMode, sourcelist};
+		//interface.append(record)
+		
+		me->filterchange = true;
+		me->change = TO_INCLUDE;
+		bool changed = false;
+		int index_to_remove;
+		for(int i =0;i < me->state.size();i++){
+			if(me->state[i]->multicastAddress == multicastAddressin){
+				if (me->state[i]->FilterMode != INCLUDE){
+					changed = true;
+				}
+				me->state[i]->FilterMode = INCLUDE;
+				me->state[i]->sourcelist->clear();
+				index_to_remove = i;
+
+			}
+		}
+		me->state.erase(me->state.begin() + index_to_remove);
+	}
+
 	void InterfaceElement::add_handlers(){
 		add_write_handler("Join", &Join, (void*)0);
 		add_write_handler("Leave", &Leave, (void*)0);
+		add_write_handler("QuietLeave", &Leave, (void*)0);
     }
 
 	

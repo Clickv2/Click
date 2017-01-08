@@ -68,6 +68,7 @@ public:
 	void add_handlers();
 	static int Leave(const String &conf, Element *e, void* thunk, ErrorHandler *errh);
 	static int Join(const String &conf, Element *e, void* thunk, ErrorHandler *errh);
+	static int QuietLeave(const String &conf, Element *e, void* thunk, ErrorHandler *errh);
 	void push(int, Packet*); 
 
 	void Reply_to_query();
