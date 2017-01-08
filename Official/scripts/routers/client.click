@@ -38,7 +38,6 @@ elementclass Client {
 
 	// Incoming Packets
 	input
-		-> ToDump(dumps/incomingQueries.dump)
 		-> HostEtherFilter($address)
 		-> in_cl :: Classifier(12/0806 20/0001, 12/0806 20/0002, 12/0800)
 		-> arp_res :: ARPResponder($address)
@@ -52,14 +51,12 @@ elementclass Client {
 
 	rt[2]
 		-> interface::InterfaceElement
-		-> ToDump(dumps/forClient.dump, ENCAP IP)
 		-> [1]output
 
 	interface[1]
 		-> IPEncap(2, $address, 224.0.0.22, TTL 1)
 		-> MarkIPHeader
 		-> CheckIPHeader
-		-> ToDump(dumps/messagesSentByClient.dump, ENCAP IP)
 		-> ipgw
 
 	//interface[2]
