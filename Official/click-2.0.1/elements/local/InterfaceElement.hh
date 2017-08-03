@@ -8,6 +8,9 @@
 #include <clicknet/ether.h>
 #include <click/timer.hh>
 #include <click/ipaddress.hh>
+#include <click/timer.hh>
+
+#include <limits.h>
 
 
 #ifndef MODE_IS_INCLUDE
@@ -55,6 +58,51 @@ public:
 	Vector<struct in_addr> *sourcelist;
 };
 
+//////////////////////////////////////////////////
+// Mechanism to schedule/manage reports         //
+//////////////////////////////////////////////////
+
+struct scheduledStateChangeReportData {
+	// Holds data AND schedules statechange reports
+	scheduledStateChangeReportData(unsigned int _amount, unsigned int _interval, in_addr _multicastAddress, unsigned int _filterMode, Element* _parentInterface, bool immediateSend = true);
+
+	void addReport(unsigned int _amount, unsigned int _interval, in_addr _multicastAddress, unsigned int _filterMode);
+	void sendPacket(bool scheduleOnly = false);
+
+	unsigned int amount;
+	unsigned int sent;
+	unsigned int interval;
+
+	Vector<in_addr>	multicastAddresses;
+	Vector<unsigned int> filterModes;
+
+	Element* parentInterface;
+	Timer* reportTimer;
+};
+
+struct QueryReportScheduler {
+	QueryReportScheduler(unsigned int _interval, Element* _parentInterface);
+
+	void addReport(unsigned int _interval, String _multicastAddress);
+
+	unsigned int interval;
+
+	Vector<String>	multicastAddresses;
+	Vector<Timer*> reportTimers;
+
+	Element* parentInterface;
+};
+
+struct QueryReportData {
+	QueryReportData(QueryReportScheduler* _scheduler, String _multicastAddress) {scheduler = _scheduler; multicastAddress = _multicastAddress;}
+
+	QueryReportScheduler* scheduler;
+	String multicastAddress;
+};
+
+void run_stateChangeReportData_timer(Timer* timer, void* reportData);
+void run_queryResponse_timer(Timer* timer, void* reportData);
+
 
 class InterfaceElement: public Element{
 //output 0 if mine, 1 if i send message, if not mine, nothing is pushed anywhere
@@ -72,58 +120,26 @@ public:
 	void push(int, Packet*); 
 
 	void Reply_to_query();
-	int PacketMerge(Packet *p, int QQI, int tempcountdown);
 	void pushReply(Packet *p, int output);
 
-	Timer* report_timer;
-	Timer* reply_timer;
-	void run_timer(Timer* timer);
-
-	Vector<Packet*> Reports;
 	int robustness_Var;
 	int unsolicited_response_interval;
-	Vector<int> unsolicited_intervals;
 
 private:
-	Vector<Packet*> scheduledReports;
-	Vector<String> scheduledTypes;
 	Vector<interface_record*> state;
-	bool filterchange;
-	filter_mode_change change;
 
-	int amount_replies_sent;
-	int countdown;
 	int Query_response_interval;
-	bool scheduled;
 
+	scheduledStateChangeReportData stateChangeReports;
+	QueryReportScheduler generalQueryReports;
 
-
-
+	friend void run_queryResponse_timer(Timer* timer, void* reportData);
 
 };
-void run_reportTimer(Timer* timer, void* interface);
+
 int _decoder(int resp_or_interval);
 int _encoder(int to_encode);
-/*
-struct socket_record{
-	Interface* interface;
-	struct in_addr multicastAddress;
-	filter_mode FilterMode;
-	Vector<struct in_addr> sourcelist;
-};
 
-class SocketElement: public Element{
-public:
-	SocketElement();
-	~SocketElement();
-  	void add_handlers();
-	int handle(const char* &conf, Element *e, void* thunk, ErrorHandler *errh);
-private:
-	Vector<socket_record> state;
-	bool filterchange;
-	filter_mode_change change;
-
-};*/
 CLICK_ENDDECLS
 
 #endif

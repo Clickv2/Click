@@ -490,15 +490,6 @@ PacketScheduler::PacketScheduler(GroupReportGenerator gen, int sendEvery_X_ms, E
 	f_startupSent = -1;
 }
 
-PacketScheduler::~PacketScheduler(){
-	/// Can't delete packets... its private
-	///delete f_packet;
-	// if (f_packet != NULL){
-	// 	f_packet->kill();
-	// }
-	//click_chatter("Removing scheduler");
-}
-
 void PacketScheduler::suppress(double time, double startupInterval, unsigned int startupCount){
 	//click_chatter("suppressing %f ms", time);
 	f_timer->clear();

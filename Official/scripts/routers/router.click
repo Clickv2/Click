@@ -177,10 +177,10 @@ elementclass Router {
 		-> toClients::Tee
 
 	toClients[0]
-		-> interface1::RouterInterface(MRC 120, SFLAG false, QRV 5, QQIC 10, IP $client1_address, QUERY_INTERVAL 125, QUERY_RESPONSE_INTERVAL 100, CONNECTOR connect)
+		-> interface1::RouterInterface(MRC 120, SFLAG false, QRV 5, QQIC 10, IP $client1_address, QUERY_INTERVAL 5, QUERY_RESPONSE_INTERVAL 4, CONNECTOR connect)
 
 	toClients[1]
-		-> interface2::RouterInterface(MRC 120, SFLAG false, QRV 5, QQIC 10, IP $client1_address, QUERY_INTERVAL 125, QUERY_RESPONSE_INTERVAL 100, CONNECTOR connect)
+		-> interface2::RouterInterface(MRC 120, SFLAG false, QRV 5, QQIC 10, IP $client1_address, QUERY_INTERVAL 5, QUERY_RESPONSE_INTERVAL 4, CONNECTOR connect)
 
 	toClients[2]
 		-> routerInterface::InterfaceElement()

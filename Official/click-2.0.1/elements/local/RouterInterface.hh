@@ -110,7 +110,7 @@ public:
 	PacketScheduler(String multicastAddr, int sendEvery_X_ms, Element* parentInterface, int amountOfTimes, unsigned int outputPort);
 	PacketScheduler(GroupReportGenerator gen, int sendEvery_X_ms, Element* parentInterface, int amountOfTimes, unsigned int outputPort);
 
-	~PacketScheduler();
+	~PacketScheduler() {}
 
 	void sendPacket();
 

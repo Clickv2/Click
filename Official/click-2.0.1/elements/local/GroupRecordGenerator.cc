@@ -141,26 +141,6 @@ IPAddress GroupReportParser::getDST() const{
 	return f_dst;
 }
 
-/*void GroupReportParser::printPacket() const{
-	for (int i = 0; i < f_groupRecordList.size(); i++){
-		const struct GroupRecordStatic *record = &f_groupRecordList.at(i);
-
-		struct GroupRecordStatic newRecord;
-		
-		int datalen = newRecord.auxDataLen;
-		int nrsources = newRecord.nrOfSources;
-		int type = newRecord.recordType;
-		cout << ("RECORD:\n");
-		cout << ("\tTYPE ");
-		cout << "\t" << type << endl;
-		cout << ("\tAUX ");
-		cout << "\t" << datalen << endl;
-		cout << ("\tsourceAmt ");
-		cout << "\t" << nrsources << endl;
-	}
-}*/
-
-
 GroupReportGeneratorElement::GroupReportGeneratorElement(){}
 
 GroupReportGeneratorElement::~GroupReportGeneratorElement(){}
@@ -174,28 +154,7 @@ int GroupReportGeneratorElement::configure(Vector<String> &conf, ErrorHandler *e
 	return 0;
 }
 
-void GroupReportGeneratorElement::push(int port, Packet* p){
-	click_chatter("received packet on genElement");
-}
-
-Packet* GroupReportGeneratorElement::make_packet(){
-	srand(time(0));
-	int filterMode = rand() % 2 + 1;
-
-	GroupReportGenerator gen;
-	gen.makeNewPacket(REPORTMESSAGE);
-	gen.addGroupRecord(4, 0, IPAddress("230.0.0.1").in_addr(), Vector<struct in_addr>());
-	Packet* result = gen.getCurrentPacket();
-	return result;
-}
-
-void GroupReportGeneratorElement::run_timer(Timer *timer)
-{
-    if (Packet *q = make_packet()) {
- 		output(0).push(q);
- 		///timer->reschedule_after_msec(1000);
-    }
-}
+void GroupReportGeneratorElement::push(int port, Packet* p) {}
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(GroupReportGeneratorElement)
