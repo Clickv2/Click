@@ -17,11 +17,13 @@
 
 CLICK_DECLS
 
+int InterfaceElement::nextID = 1;
+
 //////////////////////////////////////////////////
 // Mechanism to schedule/manage reports         //
 //////////////////////////////////////////////////
 
-scheduledStateChangeReportData::scheduledStateChangeReportData(unsigned int _amount, unsigned int _interval, in_addr _multicastAddress, unsigned int _filterMode, Element* _parentInterface, bool immediateSend) {
+scheduledStateChangeReportData::scheduledStateChangeReportData(unsigned int _amount, unsigned int _interval, in_addr _multicastAddress, unsigned int _filterMode, InterfaceElement* _parentInterface, bool immediateSend) {
 	amount = _amount;
 	sent = 0;
 
@@ -38,6 +40,7 @@ scheduledStateChangeReportData::scheduledStateChangeReportData(unsigned int _amo
 void scheduledStateChangeReportData::addReport(unsigned int _amount, unsigned int _interval, in_addr _multicastAddress, unsigned int _filterMode) {
 	unsigned int remainingTime = UINT_MAX;
 	unsigned int newRemainingTime = 0;
+	amount = _amount;
 
 	if (multicastAddresses.size() != 0) {
 		// Reports are scheduled, check the timer
@@ -45,10 +48,17 @@ void scheduledStateChangeReportData::addReport(unsigned int _amount, unsigned in
 		reportTimer->unschedule();
 	}
 
-	// TODO not hardcoded
-	newRemainingTime = 10000;
+	srand(time(NULL));
+	newRemainingTime = rand() % (_interval + 1);
 
+	if (parentInterface->makeOutput && amount > 1) {
+		click_chatter("Interface with ID %i sending statechange report in interval [0ms, %ums], chose %ums\n", parentInterface->myID, _interval, newRemainingTime);
+	}
 	newRemainingTime = (remainingTime > newRemainingTime) ? newRemainingTime:remainingTime;
+
+	if (remainingTime != UINT_MAX && parentInterface->makeOutput && amount > 1) {
+		click_chatter("Interface with ID %i already scheduled a statechange report in %ums, new report is scheduled after %ums\n", parentInterface->myID, remainingTime, newRemainingTime);
+	}
 
 	// Set the data
 	amount = _amount;
@@ -90,7 +100,6 @@ void scheduledStateChangeReportData::addReport(unsigned int _amount, unsigned in
 		reportTimer = new Timer(run_stateChangeReportData_timer, this);
 		reportTimer->initialize(parentInterface);
 		reportTimer->schedule_after_msec(newRemainingTime);
-		click_chatter("scheduled respons after %u", newRemainingTime);
 	}
 }
 
@@ -113,8 +122,15 @@ void scheduledStateChangeReportData::sendPacket(bool scheduleOnly) {
 		// Schedule retransmission
 		reportTimer = new Timer(run_stateChangeReportData_timer, this);
 		reportTimer->initialize(parentInterface);
-		// TODO not hardcoded
-		reportTimer->schedule_after_msec(interval);
+
+		srand(time(NULL));
+		unsigned int newRemainingTime = rand() % (interval + 1);
+
+		if (parentInterface->makeOutput) {
+			click_chatter("Interface with ID %i sending statechange report in interval [0ms, %ums], chose %ums", parentInterface->myID, interval, newRemainingTime);
+		}
+
+		reportTimer->schedule_after_msec(newRemainingTime);
 	} else {
 		// All retransmissions are done
 		filterModes.clear();
@@ -122,7 +138,7 @@ void scheduledStateChangeReportData::sendPacket(bool scheduleOnly) {
 	}
 }
 
-QueryReportScheduler::QueryReportScheduler(unsigned int _interval, Element* _parentInterface) {
+QueryReportScheduler::QueryReportScheduler(unsigned int _interval, InterfaceElement* _parentInterface) {
 	parentInterface = _parentInterface;
 	interval = _interval;
 }
@@ -130,6 +146,7 @@ QueryReportScheduler::QueryReportScheduler(unsigned int _interval, Element* _par
 void QueryReportScheduler::addReport(unsigned int _interval, String _multicastAddress) {
 	unsigned int index = 0;
 	bool foundAddress = false;
+	interval = _interval;
 
 	for (unsigned int i = 0; i < multicastAddresses.size(); ++i) {
 		if (_multicastAddress == multicastAddresses[i]) {
@@ -141,16 +158,28 @@ void QueryReportScheduler::addReport(unsigned int _interval, String _multicastAd
 
 	if (!foundAddress) {
 		// Common case, the address isn't there, just schedule a response
-		// TODO not hardcoded
-		unsigned int responseTime = 1000;
+		srand(time(NULL));
+		unsigned int responseTime = rand() % (_interval + 1);
+
+		if (_multicastAddress == "" && parentInterface->makeOutput) {
+			click_chatter("Interface with ID %i responding to general query in interval [0ms, %ums], chose %ums\n",
+					parentInterface->myID,
+					_multicastAddress.c_str(),
+					_interval,
+					responseTime);
+		} else if (parentInterface->makeOutput){
+			click_chatter("Interface with ID %i responding to group specific query (%s) in interval [0ms, %ums], chose %ums\n",
+					parentInterface->myID,
+					_multicastAddress.c_str(),
+					_interval,
+					responseTime);
+		}
 
 		multicastAddresses.push_back(_multicastAddress);
 
 		Timer* reportTimer = new Timer(run_queryResponse_timer, new QueryReportData(this, multicastAddresses.back()));
 		reportTimer->initialize(parentInterface);
 		reportTimer->schedule_after_msec(responseTime);
-
-		click_chatter("SCHEDULED QUERY RESPONSE");
 
 		reportTimers.push_back(reportTimer);
 	} else {
@@ -164,15 +193,13 @@ void run_queryResponse_timer(Timer* timer, void* reportData){
 
 	uint8_t filterMode = MODE_IS_INCLUDE;
 
-	if (data->multicastAddress != "GENERALQUERY") {
-		// TODO above string
+	if (data->multicastAddress != "") {
 		// Search specific mc_addr in the interface
 		for (unsigned int i = 0; i < parentInterface->state.size(); ++i) {
 			interface_record* record = parentInterface->state[i];
 			if (IPAddress(record->multicastAddress).unparse() == data->multicastAddress) {
 				if (record->FilterMode == filter_mode::EXCLUDE) {
 					filterMode = MODE_IS_EXCLUDE;
-					click_chatter("MODE IS JOIN");
 				}
 
 				break;
@@ -185,10 +212,33 @@ void run_queryResponse_timer(Timer* timer, void* reportData){
 		reportgenerator.addGroupRecord(filterMode, 0, IPAddress(data->multicastAddress).in_addr(), Vector<struct in_addr>());
 
 		Packet* reportpacket = reportgenerator.getCurrentPacket();
+
+		if (parentInterface->makeOutput) {
+			click_chatter("Interface with ID %u sent a response to a group specific query (%s)\n", parentInterface->myID, data->multicastAddress.c_str());
+		}
+
 		parentInterface->output(1).push(reportpacket);
-		click_chatter("SENDING");
 	} else {
-		// TODO Respond to general query
+		GroupReportGenerator reportgenerator;
+		reportgenerator.makeNewPacket(REPORTMESSAGE);
+
+		for (int i = 0; i < parentInterface->state.size(); ++i) {
+			interface_record* currentRecord = parentInterface->state[i];
+
+			if (currentRecord->FilterMode == EXCLUDE) {
+				reportgenerator.addGroupRecord(MODE_IS_EXCLUDE, 0, currentRecord->multicastAddress, Vector<struct in_addr>());
+			} else {
+				reportgenerator.addGroupRecord(MODE_IS_INCLUDE, 0, currentRecord->multicastAddress, Vector<struct in_addr>());
+			}
+		}
+
+		Packet* reportpacket = reportgenerator.getCurrentPacket();
+
+		if (parentInterface->makeOutput) {
+			click_chatter("Interface with ID %u sent a response to a general query\n", parentInterface->myID);
+		}
+
+		parentInterface->output(1).push(reportpacket);
 	}
 
 	// Remove data from scheduler
@@ -235,7 +285,6 @@ int _encoder(int to_encode) {
 					if ((i-3) & checker) {
 						int codexp = 1 << j;
 						code = code | codexp;
-						//click_chatter("Code exp for %d ms\n", code);
 					}
 					counter ++;
 				}
@@ -246,13 +295,10 @@ int _encoder(int to_encode) {
 					if (mantissa & checker) {
 						int codmant = 1 <<j;
 						code = code | codmant;
-						//click_chatter("Code mant for %d ms\n", code);
 					}
 					counter ++;
 					
 				}
-				//click_chatter("Code exp %d ms\n", i);
-				//click_chatter("Code Test %d ms\n", code);
 				return code;
 				
 			}
@@ -295,14 +341,17 @@ InterfaceElement::InterfaceElement(): stateChangeReports(0, 0, IPAddress(""), 0,
 	this->robustness_Var = 2;
 	this->Query_response_interval = 100;
 	this->unsolicited_response_interval = 1000;
+
+	// TODO handler
+	this->makeOutput = true;
+	this->myID = InterfaceElement::nextID;
+	++InterfaceElement::nextID;
 }
 
 InterfaceElement::~InterfaceElement() {}
 
 void InterfaceElement::pushReply(Packet *p, int outputport) {
-	//click_chatter("pushing reply");
 	output(outputport).push(p);
-	//this->replies_to_send -= 1;
 
 }
 
@@ -352,15 +401,22 @@ void InterfaceElement::push(int port, Packet* p) {
 		Query_Interval = _decoder(QQIC);
 
 		if (receivedGroupAddress == IPAddress("")) {
-			// TODO
 			// General query received
-			
+			if (makeOutput) {
+				click_chatter("Received general query on interface with ID %d\n", myID);
+			}
+
+			// TODO not hardcoded
+			generalQueryReports.addReport(maxRespTime, String(""));
 		}
 		else if (receivedGroupAddress == groupaddress) {
-			// TODO
 			// Group specific query
-			click_chatter("QUERY");
-			generalQueryReports.addReport(1000, receivedGroupAddress.unparse());
+			if (makeOutput) {
+				click_chatter("Received group specific query (%s) on interface with ID %d\n", receivedGroupAddress.unparse().c_str(), myID);
+			}
+
+			// TODO not hardcoded
+			generalQueryReports.addReport(maxRespTime, receivedGroupAddress.unparse());
 		} else {
 			// udp packet
 			udppacket = true;
@@ -451,6 +507,7 @@ int InterfaceElement::Join(const String &conf, Element *e, void* thunk, ErrorHan
 		me->state.push_back(newInterfacerec);
 		sendJoin = true;
 	}
+
 
 	if (sendJoin) {
 		// Note that this part is reached when the state actually changed!

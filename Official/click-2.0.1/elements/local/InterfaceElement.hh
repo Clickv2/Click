@@ -49,6 +49,7 @@
 CLICK_DECLS
 enum filter_mode {INCLUDE, EXCLUDE};
 enum filter_mode_change {TO_INCLUDE, TO_EXCLUDE};
+class InterfaceElement;
 
 class interface_record{
 public:
@@ -64,7 +65,7 @@ public:
 
 struct scheduledStateChangeReportData {
 	// Holds data AND schedules statechange reports
-	scheduledStateChangeReportData(unsigned int _amount, unsigned int _interval, in_addr _multicastAddress, unsigned int _filterMode, Element* _parentInterface, bool immediateSend = true);
+	scheduledStateChangeReportData(unsigned int _amount, unsigned int _interval, in_addr _multicastAddress, unsigned int _filterMode, InterfaceElement* _parentInterface, bool immediateSend = true);
 
 	void addReport(unsigned int _amount, unsigned int _interval, in_addr _multicastAddress, unsigned int _filterMode);
 	void sendPacket(bool scheduleOnly = false);
@@ -76,12 +77,12 @@ struct scheduledStateChangeReportData {
 	Vector<in_addr>	multicastAddresses;
 	Vector<unsigned int> filterModes;
 
-	Element* parentInterface;
+	InterfaceElement* parentInterface;
 	Timer* reportTimer;
 };
 
 struct QueryReportScheduler {
-	QueryReportScheduler(unsigned int _interval, Element* _parentInterface);
+	QueryReportScheduler(unsigned int _interval, InterfaceElement* _parentInterface);
 
 	void addReport(unsigned int _interval, String _multicastAddress);
 
@@ -90,7 +91,7 @@ struct QueryReportScheduler {
 	Vector<String>	multicastAddresses;
 	Vector<Timer*> reportTimers;
 
-	Element* parentInterface;
+	InterfaceElement* parentInterface;
 };
 
 struct QueryReportData {
@@ -124,6 +125,11 @@ public:
 
 	int robustness_Var;
 	int unsolicited_response_interval;
+
+	bool makeOutput;
+	int myID;
+
+	static int nextID;
 
 private:
 	Vector<interface_record*> state;
