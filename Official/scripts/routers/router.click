@@ -10,7 +10,6 @@
 //	[0]: packets sent to the 192.168.1.0/24 network
 //	[1]: packets sent to the 192.168.2.0/24 network
 //	[2]: packets sent to the 192.168.3.0/24 network
-//  [3]: packets destined for the router itself
 
 connect::RouterInterfaceConnector;
 
@@ -181,14 +180,6 @@ elementclass Router {
 
 	toClients[1]
 		-> interface2::RouterInterface(MRC 120, SFLAG false, QRV 5, QQIC 10, IP $client1_address, QUERY_INTERVAL 5, QUERY_RESPONSE_INTERVAL 4, CONNECTOR connect)
-
-	toClients[2]
-		-> routerInterface::InterfaceElement()
-		-> [3]output
-
-	routerInterface[1]
-		// Note that this router doesn't have to send reports
-		-> Discard
 
 	paintSwitch [2]
 		-> interface1

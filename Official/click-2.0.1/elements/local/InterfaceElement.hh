@@ -118,6 +118,8 @@ public:
 	static int Leave(const String &conf, Element *e, void* thunk, ErrorHandler *errh);
 	static int Join(const String &conf, Element *e, void* thunk, ErrorHandler *errh);
 	static int QuietLeave(const String &conf, Element *e, void* thunk, ErrorHandler *errh);
+	static int Verbose(const String &conf, Element *e, void* thunk, ErrorHandler *errh);
+	static int Silent(const String &conf, Element *e, void* thunk, ErrorHandler *errh);
 	void push(int, Packet*); 
 
 	void Reply_to_query();
@@ -140,6 +142,7 @@ private:
 	QueryReportScheduler generalQueryReports;
 
 	friend void run_queryResponse_timer(Timer* timer, void* reportData);
+	friend class QueryReportScheduler;
 
 };
 

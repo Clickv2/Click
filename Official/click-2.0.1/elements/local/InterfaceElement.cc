@@ -84,6 +84,7 @@ void scheduledStateChangeReportData::addReport(unsigned int _amount, unsigned in
 
 	// Build and send one package immediately
 	if (amount > 0) {
+		click_chatter("Interface with ID %i immediately sending statechange report\n", parentInterface->myID, _interval, newRemainingTime);
 		GroupReportGenerator reportgenerator;
 		reportgenerator.makeNewPacket(REPORTMESSAGE);
 
@@ -113,6 +114,9 @@ void scheduledStateChangeReportData::sendPacket(bool scheduleOnly) {
 		}
 
 		Packet* reportpacket = reportgenerator.getCurrentPacket();
+
+		click_chatter("Interface with ID %i timer expired, sending the delayed statechange report\n", parentInterface->myID);
+
 		parentInterface->output(1).push(reportpacket);
 
 		sent += 1;
@@ -156,7 +160,24 @@ void QueryReportScheduler::addReport(unsigned int _interval, String _multicastAd
 		}
 	}
 
-	if (!foundAddress) {
+	bool sendResponse = false;
+	// Only send a response when receiving from this group
+	for (unsigned int i = 0; i < parentInterface->state.size(); ++i) {
+		interface_record* currentRecord = parentInterface->state[i];
+
+		if (IPAddress(currentRecord->multicastAddress).unparse() == _multicastAddress && currentRecord->FilterMode == EXCLUDE) {
+			sendResponse = true;
+			break;
+		}
+	}
+
+	if (_multicastAddress == "") {
+		// Always respond to general query
+		sendResponse = true;
+	}
+
+
+	if (!foundAddress && sendResponse) {
 		// Common case, the address isn't there, just schedule a response
 		srand(time(NULL));
 		unsigned int responseTime = rand() % (_interval + 1);
@@ -164,7 +185,6 @@ void QueryReportScheduler::addReport(unsigned int _interval, String _multicastAd
 		if (_multicastAddress == "" && parentInterface->makeOutput) {
 			click_chatter("Interface with ID %i responding to general query in interval [0ms, %ums], chose %ums\n",
 					parentInterface->myID,
-					_multicastAddress.c_str(),
 					_interval,
 					responseTime);
 		} else if (parentInterface->makeOutput){
@@ -182,8 +202,19 @@ void QueryReportScheduler::addReport(unsigned int _interval, String _multicastAd
 		reportTimer->schedule_after_msec(responseTime);
 
 		reportTimers.push_back(reportTimer);
-	} else {
-		// TODO reschedule if necessary?
+	} else if (sendResponse) {
+		unsigned int remainingTime = reportTimers[index]->expiry_steady().msecval() - Timestamp::now_steady().msecval();
+		reportTimers[index]->unschedule();
+
+		srand(time(NULL));
+		unsigned int newRemainingTime = rand() % (_interval + 1);
+
+		if (parentInterface->makeOutput) {
+			click_chatter("Merging pending group specific reports on client interface with ID %i, choosing between the old timer (%ums) and the new timer (%ums), chose %ums\n",
+					parentInterface->myID, remainingTime, newRemainingTime, newRemainingTime < remainingTime ? newRemainingTime : remainingTime);
+		}
+
+		reportTimers[index]->schedule_after_msec(newRemainingTime < remainingTime ? newRemainingTime : remainingTime);
 	}
 }
 
@@ -342,8 +373,7 @@ InterfaceElement::InterfaceElement(): stateChangeReports(0, 0, IPAddress(""), 0,
 	this->Query_response_interval = 100;
 	this->unsolicited_response_interval = 1000;
 
-	// TODO handler
-	this->makeOutput = true;
+	this->makeOutput = false;
 	this->myID = InterfaceElement::nextID;
 	++InterfaceElement::nextID;
 }
@@ -359,6 +389,7 @@ void InterfaceElement::pushReply(Packet *p, int outputport) {
 void InterfaceElement::push(int port, Packet* p) {
 	click_ip *ipHeader = (click_ip *)p->data();
 	IPAddress f_dst = ipHeader->ip_dst;
+	IPAddress f_src = ipHeader->ip_src;
 	IPAddress groupaddress;
 	bool acceptpacket = false;
 	bool acceptquery = false;
@@ -406,7 +437,6 @@ void InterfaceElement::push(int port, Packet* p) {
 				click_chatter("Received general query on interface with ID %d\n", myID);
 			}
 
-			// TODO not hardcoded
 			generalQueryReports.addReport(maxRespTime, String(""));
 		}
 		else if (receivedGroupAddress == groupaddress) {
@@ -415,7 +445,6 @@ void InterfaceElement::push(int port, Packet* p) {
 				click_chatter("Received group specific query (%s) on interface with ID %d\n", receivedGroupAddress.unparse().c_str(), myID);
 			}
 
-			// TODO not hardcoded
 			generalQueryReports.addReport(maxRespTime, receivedGroupAddress.unparse());
 		} else {
 			// udp packet
@@ -542,10 +571,34 @@ int InterfaceElement::QuietLeave(const String &conf, Element *e, void* thunk, Er
 	me->state.erase(me->state.begin() + index_to_remove);
 }
 
+int InterfaceElement::Verbose(const String &conf, Element *e, void* thunk, ErrorHandler *errh) {
+	GroupReportGenerator reportgenerator;
+	InterfaceElement *me = (InterfaceElement* ) e;
+	struct in_addr multicastAddressin;
+	if (cp_va_kparse(conf, e, errh, cpEnd) < 0) {
+		return -1;
+	}
+	
+	me->makeOutput = true;
+}
+
+int InterfaceElement::Silent(const String &conf, Element *e, void* thunk, ErrorHandler *errh) {
+	GroupReportGenerator reportgenerator;
+	InterfaceElement *me = (InterfaceElement* ) e;
+	struct in_addr multicastAddressin;
+	if (cp_va_kparse(conf, e, errh, cpEnd) < 0) {
+		return -1;
+	}
+	
+	me->makeOutput = false;
+}
+
 void InterfaceElement::add_handlers() {
 	add_write_handler("Join", &Join, (void*)0);
 	add_write_handler("Leave", &Leave, (void*)0);
 	add_write_handler("QuietLeave", &QuietLeave, (void*)0);
+	add_write_handler("Verbose", &Verbose, (void*)0);
+	add_write_handler("Silent", &Silent, (void*)0);
 }
 
 

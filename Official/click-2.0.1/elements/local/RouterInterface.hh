@@ -35,6 +35,9 @@ public:
 	void deleteScheduler(PacketScheduler* scheduler);
 	void push(int, Packet*);
 
+	static int Verbose(const String &conf, Element *e, void* thunk, ErrorHandler *errh);
+	static int Silent(const String &conf, Element *e, void* thunk, ErrorHandler *errh);
+
 public:
 
 	void querierElection(Packet* p);
@@ -76,6 +79,12 @@ public:
 		/// see rfc
 	unsigned int f_lastMemberQueryInterval;
 		/// maxresp time used to calc the maxrespcode in group-specific queries
+	bool f_makeOutput;
+		/// If this is true, output will be printed (information about timers etc)
+
+	int f_myID;
+
+	static int f_nextID;
 
 
 	Vector<RouterRecord> f_state;
@@ -117,6 +126,8 @@ public:
 	void suppress(double time, double startupInterval, unsigned int startupCount);
 
 	void reset();
+
+	void merge(int sendEvery_X_ms, int amountOfTimes);
 
 	static unsigned int f_nextID;
 
