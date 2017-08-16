@@ -233,7 +233,7 @@ void run_queryResponse_timer(Timer* timer, void* reportData){
 		for (unsigned int i = 0; i < parentInterface->state.size(); ++i) {
 			interface_record* record = parentInterface->state[i];
 			if (IPAddress(record->multicastAddress).unparse() == data->multicastAddress) {
-				if (record->FilterMode == filter_mode::EXCLUDE) {
+				if (record->FilterMode == EXCLUDE) {
 					filterMode = MODE_IS_EXCLUDE;
 				}
 
