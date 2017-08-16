@@ -264,7 +264,6 @@ void RouterInterface::interpretGroupReport(Packet* p) {
 void RouterInterface::sendSpecificQuery(IPAddress multicastAddress) {
 	/// if S-flag is clear (false) => update group timer
 	GroupQueryGenerator generator;
-	IPAddress dst = IPAddress("224.0.0.1");
 	Packet* p = generator.makeNewPacket(f_lastMemberQueryInterval, f_SFlag, f_QRV, f_QQIC, multicastAddress,
 		f_myIP, multicastAddress);
 
@@ -280,7 +279,7 @@ void RouterInterface::sendSpecificQuery(IPAddress multicastAddress) {
 
 	if (! found) {
 		f_schedulers.push_back(new PacketScheduler(multicastAddress.unparse().c_str(),
-			f_lastMemberQueryInterval, this, f_lastMemberQueryCount, 0));
+			f_lastMemberQueryInterval, this, f_lastMemberQueryCount - 1, 0));
 	}
 
 
@@ -292,8 +291,7 @@ void RouterInterface::sendSpecificQuery(IPAddress multicastAddress) {
 		}
 	}
 
-	// TODO push or don't push?
-	// output(0).push(p);
+	output(0).push(p);
 }
 
 

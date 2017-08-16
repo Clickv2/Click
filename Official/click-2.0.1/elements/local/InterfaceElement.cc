@@ -98,6 +98,8 @@ void scheduledStateChangeReportData::addReport(unsigned int _amount, unsigned in
 
 	if (amount > 1) {
 		// Schedule the next packet with the new remaining time
+
+		// TODO delete timer if initialized
 		reportTimer = new Timer(run_stateChangeReportData_timer, this);
 		reportTimer->initialize(parentInterface);
 		reportTimer->schedule_after_msec(newRemainingTime);
@@ -124,6 +126,8 @@ void scheduledStateChangeReportData::sendPacket(bool scheduleOnly) {
 
 	if (sent < amount) {
 		// Schedule retransmission
+
+		// TODO delete timer?
 		reportTimer = new Timer(run_stateChangeReportData_timer, this);
 		reportTimer->initialize(parentInterface);
 
@@ -497,6 +501,7 @@ int InterfaceElement::Leave(const String &conf, Element *e, void* thunk, ErrorHa
 		me->stateChangeReports.addReport(me->robustness_Var, me->unsolicited_response_interval, multicastAddressin, CHANGE_TO_INCLUDE);
 	}
 
+	// TODO delete ptr and sourcelist
 	me->state.erase(me->state.begin() + index_to_remove);
 }
 
@@ -568,6 +573,8 @@ int InterfaceElement::QuietLeave(const String &conf, Element *e, void* thunk, Er
 
 		}
 	}
+
+	// TODO delete ptr and sourcelist
 	me->state.erase(me->state.begin() + index_to_remove);
 }
 
